@@ -1,0 +1,51 @@
+# =======================================================================
+# Backup Manager Configuration File
+# =======================================================================
+# INSTRUCTIONS:
+# 1. Copy this file: cp backup_config.conf.example backup_config.conf
+# 2. Edit backup_config.conf with your settings
+# 3. Never commit backup_config.conf to git!
+# =======================================================================
+
+# === USER SETTINGS ===
+BACKUP_USER="backup"                    # Linux user for running backups
+SSH_KEY="/home/backup/.ssh/id_ed25519"  # Path to SSH private key
+
+# === ENCRYPTION (Optional) ===
+GPG_RECIPIENT="admin@example.com"       # GPG email for encryption
+ENABLE_ENCRYPTION="false"               # Set to "true" to enable GPG encryption
+
+# === GFS RETENTION POLICY ===
+RETENTION_DAILY=7                       # Keep daily backups for N days
+RETENTION_WEEKLY=4                      # Keep weekly backups for N weeks (converted to days: 4*7=28)
+RETENTION_MONTHLY=12                    # Keep monthly backups for N months (converted to days: 12*30=360)
+
+# === NETWORK SETTINGS ===
+SSH_TIMEOUT=20                          # Connection timeout (seconds)
+SSH_KEEPALIVE=60                        # Keep-alive interval (seconds)
+SSH_RETRY_COUNT=3                       # Retry attempts for failed connections
+
+# === BACKUP BEHAVIOR ===
+MAX_PARALLEL_JOBS=2                     # Maximum concurrent backup jobs
+BANDWIDTH_LIMIT=""                      # Limit bandwidth (KB/s), empty = unlimited
+COMPRESSION_LEVEL=6                     # rsync compression (0-9, 0=none)
+
+# === ALERT SETTINGS ===
+ENABLE_ALERTS="true"                    # Enable email/notifications
+ALERT_EMAIL="admin@example.com"         # Email for alerts (To:)
+EMAIL_TO="admin@example.com"            # Email recipient (alternative)
+EMAIL_FROM="backup@$(hostname)"         # Email sender
+SMTP_SERVER="localhost"                 # SMTP server
+SMTP_PORT=25                            # SMTP port
+MSMTP_ACCOUNT="default"                 # msmtp account name (if using msmtp)
+
+# === ADVANCED OPTIONS ===
+ENABLE_DEDUPLICATION="true"             # Use hard links for unchanged files
+VERIFY_CHECKSUMS="false"                # Verify file integrity (slower but safer)
+QUARANTINE_SUSPICIOUS="true"            # Move suspicious files to quarantine
+
+# === PATHS (Usually no need to change) ===
+BACKUP_ROOT="/backup"
+DEVICES_DIR="${BACKUP_ROOT}/devices"
+CONFIG_DIR="${BACKUP_ROOT}/config"
+LOG_DIR="${BACKUP_ROOT}/logs"

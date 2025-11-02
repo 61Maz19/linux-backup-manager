@@ -1,0 +1,66 @@
+# ===========================================
+# Backup Manager - Security & Privacy
+# ===========================================
+
+# Configuration files with sensitive data
+config/backup_config.conf
+config/discovered_devices.txt
+config/*.conf
+!config/*.conf.example
+
+# SSH Keys (NEVER commit these!)
+*.key
+*.pem
+*id_rsa*
+*id_ed25519*
+*.pub
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+*.tmp
+*.lock
+/var/lock/
+
+# Backup data (NEVER commit actual backups!)
+devices/
+backups/
+backup/
+test_copy/
+quarantine/
+
+# Deleted files archive
+deleted/
+
+# System files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+*.bak
+
+# Git
+.git/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Compressed files
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Database files
+*.sql
+*.db
+
+# GPG
+*.gpg
+*.asc

@@ -1,0 +1,114 @@
+# =======================================================================
+# Backup Exclusion Patterns
+# =======================================================================
+# INSTRUCTIONS:
+# 1. Copy: cp exclude.list.example exclude.list
+# 2. Add patterns of files/folders to exclude from backups
+# 3. One pattern per line
+# 4. Patterns support wildcards: * ? []
+# =======================================================================
+
+# === Temporary Files ===
+*.tmp
+*.temp
+*.cache
+*~
+.cache/
+tmp/
+temp/
+/tmp/
+/var/tmp/
+Temp/
+TEMP/
+
+# === System Directories (Linux) ===
+/proc/
+/sys/
+/dev/
+/run/
+/mnt/
+/media/
+lost+found/
+
+# === Log Files (Large/Old) ===
+*.log.*
+*.log.1
+*.log.2
+*.log.gz
+*.log.bz2
+*.old
+
+# === Compressed Archives ===
+*.gz
+*.bz2
+*.xz
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# === Database Temporary Files ===
+*.ibd
+*.frm
+*.MYI
+*.MYD
+mysql.sock
+postgresql.sock
+
+# === Docker ===
+/var/lib/docker/
+docker.sock
+
+# === Package Managers Cache ===
+/var/cache/apt/
+/var/cache/yum/
+/var/cache/dnf/
+/var/cache/pacman/
+
+# === User Cache & Thumbnails ===
+.thumbnails/
+.local/share/Trash/
+.mozilla/firefox/*/Cache/
+.cache/chromium/
+.cache/google-chrome/
+
+# === Windows Specific ===
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+pagefile.sys
+hiberfil.sys
+swapfile.sys
+
+# === Development ===
+node_modules/
+.git/
+.svn/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+*.class
+target/
+build/
+dist/
+
+# === IDE & Editors ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Media (Large Files) ===
+*.iso
+*.dmg
+*.vdi
+*.vmdk
+
+# === Add Your Custom Exclusions Below ===

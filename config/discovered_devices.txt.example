@@ -1,0 +1,37 @@
+# =======================================================================
+# Discovered Devices Configuration
+# =======================================================================
+# INSTRUCTIONS:
+# 1. Copy: cp discovered_devices.txt.example discovered_devices.txt
+# 2. Add your devices below
+# 3. One device per line
+#
+# FORMAT:
+# IP_ADDRESS  HOSTNAME  SSH_USER  PATH1  PATH2  PATH3 ...
+#
+# NOTES:
+# - Lines starting with # are comments and will be ignored
+# - Hostname is used for folder naming
+# - SSH_USER must have key-based authentication setup
+# - Paths are separated by spaces
+# - You can add devices manually or use: sudo ./scripts/discover_devices.sh --add
+# =======================================================================
+
+# === EXAMPLES ===
+
+# Web Server
+# 192.168.1.10  webserver  root  /var/www  /etc/nginx  /etc/apache2
+
+# Database Server
+# 192.168.1.20  database  root  /var/lib/mysql  /var/lib/postgresql  /etc/mysql
+
+# File Server
+# 10.0.0.50  fileserver  admin  /home  /srv/shares  /mnt/storage
+
+# Development Server
+# 192.168.1.30  devserver  developer  /home/developer/projects  /var/log
+
+# Windows PC (via Cygwin/WSL)
+# 192.168.100.17  PC-MAZ  maz  /cygdrive/c/Users/maz  /cygdrive/d
+
+# === YOUR DEVICES (Add below) ===
