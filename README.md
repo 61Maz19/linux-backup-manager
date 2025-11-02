@@ -1426,7 +1426,7 @@ If you find this project useful:
 ---
 
 <a name="المميزات-ar"></a>
-<div dir="rtl">
+
 ## ✨ المميزات الرئيسية
 
 ### القدرات الأساسية
