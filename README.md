@@ -1387,6 +1387,7 @@ If you find this project useful:
 <a name="arabic"></a>
 
 ---
+</div>
 
 <div align="center">
 
