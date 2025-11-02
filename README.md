@@ -371,7 +371,7 @@ If you find this project useful, please give it a ⭐ on GitHub!
 
 </div>
 
-<a name="arabic-section"></a>
+<a name="arabic"></a>
 
 ---
 
