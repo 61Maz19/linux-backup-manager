@@ -367,7 +367,7 @@ If you find this project useful, please give it a ⭐ on GitHub!
 
 <div align="center">
 
-## [العربية](#arabic-section)
+## [العربية](#arabic)
 
 </div>
 
