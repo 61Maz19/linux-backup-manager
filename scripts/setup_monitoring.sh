@@ -158,7 +158,7 @@ password       YOUR_APP_PASSWORD_HERE
 # 2. Replace YOUR_APP_PASSWORD_HERE with your app password
 # 3. Save and exit
 # 4. Secure the file: sudo chmod 600 /etc/msmtprc
-# 5. Test: echo "Test" | msmtp YOUR_EMAIL@gmail.com
+# 5. Test: echo "Test" | sudo msmtp YOUR_EMAIL@gmail.com
 # =======================================================================
 EOF
     
@@ -364,7 +364,7 @@ EOF
     echo ""
     log "⚠️  NEXT STEPS:" "$YELLOW"
     log "1. Edit email config: sudo nano /etc/msmtprc" "$CYAN"
-    log "2. Test email: echo 'Test' | msmtp your@email.com" "$CYAN"
+    log "2. Test email: echo 'Test' | sudo msmtp your@email.com" "$CYAN"
     log "3. Run status: ${BACKUP_ROOT}/scripts/backup_status.sh" "$CYAN"
 }
 
