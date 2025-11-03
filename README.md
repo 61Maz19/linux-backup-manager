@@ -506,7 +506,7 @@ git clone https://github.com/61Maz19/linux-backup-manager.git
 cd linux-backup-manager
 
 # 2. Install all dependencies
-sudo ./scripts/install_tools.sh
+sudo .scripts/install_tools.sh
 
 # 3. Create directory structure
 sudo ./scripts/setup_folders.sh
@@ -2044,19 +2044,20 @@ sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
 ```bash
 # 1. استنساخ المستودع
 git clone https://github.com/61Maz19/linux-backup-manager.git
-cd linux-backup-manager
+cd linux-backup-manager/scripts
 
 # 2. تثبيت جميع المتطلبات
-sudo ./scripts/install_tools.sh
+sudo ./install_tools.sh
 
 # 3. إنشاء هيكل المجلدات
-sudo ./scripts/setup_folders.sh
+sudo ./setup_folders.sh
+
 
 # 4. إعداد جدار الحماية (اختياري لكن موصى به)
-sudo ./scripts/setup_firewall.sh
+sudo ./setup_firewall.sh
 
 # 5. إعداد المراقبة (اختياري)
-sudo ./scripts/setup_monitoring.sh --basic
+sudo ./setup_monitoring.sh --basic
 ```
 
 <div dir="rtl">
