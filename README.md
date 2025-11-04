@@ -1836,10 +1836,12 @@ If you find this project useful:
 </div>
 
 ---
-<div dir="rtl" align="right">
-<a name="arabic"></a>
-# 🔄 Linux Backup Manager
 
+
+<a name="arabic"></a>
+<div align="center">
+# 🔄 Linux Backup Manager
+  
 
 ### حل النسخ الاحتياطي الآلي من الدرجة المؤسسية مع نظام دوران GFS
 </div>
