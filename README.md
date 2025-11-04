@@ -1801,23 +1801,39 @@ If you find this project useful:
 
 ---
 
-## 📚 Additional Resources
+---
 
-### Documentation
-- [Installation Guide](docs/installation.md) *(coming soon)*
-- [Configuration Reference](docs/configuration.md) *(coming soon)*
-- [API Documentation](docs/api.md) *(coming soon)*
+<div align="center">
 
-### Related Projects
-- [rsync](https://rsync.samba.org/) - File synchronization tool
-- [ClamAV](https://www.clamav.net/) - Antivirus engine
-- [Prometheus](https://prometheus.io/) - Monitoring system
-- [Grafana](https://grafana.com/) - Analytics platform
+## 💫 Thank You for Using Linux Backup Manager!
 
-### Community
-- [GitHub Issues](https://github.com/61Maz19/linux-backup-manager/issues) - Bug reports and feature requests
-- [GitHub Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) - Community support
+**Made with ❤️ and ☕ by**  
+**[61Maz19](https://github.com/61Maz19)**
 
+[![GitHub followers](https://img.shields.io/github/followers/61Maz19?style=social)](https://github.com/61Maz19)
+[![GitHub stars](https://img.shields.io/github/stars/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/stargazers)
+
+---
+
+### 🔗 Useful Links
+
+| Link | Description |
+|------|-------------|
+| [📦 Repository](https://github.com/61Maz19/linux-backup-manager) | Full source code |
+| [⭐ Star Project](https://github.com/61Maz19/linux-backup-manager/stargazers) | Support the project |
+| [🐛 Report Issue](https://github.com/61Maz19/linux-backup-manager/issues) | Bug reports |
+| [💡 Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) | Feature requests |
+| [📖 Documentation](https://github.com/61Maz19/linux-backup-manager#readme) | User guide |
+
+---
+
+**📅 Last Updated:** 2025-11-04 11:44 UTC  
+**🏷️ Current Version:** v3.1.0  
+**📜 License:** [MIT License](LICENSE)
+
+**If this project helped you, please give it a ⭐ star and share it with others!**
+
+</div>
 
 ---
 <div dir="rtl" align="right">
@@ -3144,9 +3160,36 @@ echo "<h1>Report</h1><p>All systems operational</p>" | sudo ./scripts/alert.sh -
 │
 
 ```
-<div align="center">
-**صُنع بـ ❤️ بواسطة [61Maz19](https://github.com/61Maz19)**
+---
 
-**آخر تحديث:** 2025-11-04 09:42 UTC
+<div dir="rtl" align="center">
+
+## 💫 شكراً لاستخدامك Linux Backup Manager!
+
+**صُنع بحب ❤️ وقهوة ☕ بواسطة**  
+**[61Maz19](https://github.com/61Maz19)**
+
+[![GitHub followers](https://img.shields.io/github/followers/61Maz19?style=social)](https://github.com/61Maz19)
+[![GitHub stars](https://img.shields.io/github/stars/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/stargazers)
+
+---
+
+### 🔗 روابط مفيدة
+
+| الرابط | الوصف |
+|--------|-------|
+| [📦 المستودع](https://github.com/61Maz19/linux-backup-manager) | الكود المصدري الكامل |
+| [⭐ ضع نجمة](https://github.com/61Maz19/linux-backup-manager/stargazers) | دعم المشروع |
+| [🐛 المشاكل](https://github.com/61Maz19/linux-backup-manager/issues) | الإبلاغ عن خطأ |
+| [💡 المناقشات](https://github.com/61Maz19/linux-backup-manager/discussions) | اقترح ميزة جديدة |
+| [📖 الوثائق](https://github.com/61Maz19/linux-backup-manager#readme) | دليل الاستخدام |
+
+---
+
+**📅 آخر تحديث:** 2025-11-04 11:44 UTC  
+**🏷️ الإصدار الحالي:** v3.1.0  
+**📜 الترخيص:** [MIT License](LICENSE)
+
+**إذا ساعدك هذا المشروع، ضع ⭐ نجمة وشاركه مع الآخرين!**
 
 </div>
