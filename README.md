@@ -1389,13 +1389,10 @@ If you find this project useful:
 ---
 
 <div dir="rtl">
+
 # 🔄 مدير النسخ الاحتياطي لينكس
 
 ### حل احترافي للنسخ الاحتياطي التلقائي مع استراتيجية GFS
-
-</div>
-
-<div dir="rtl">
 
 ## 📖 جدول المحتويات
 
@@ -1560,7 +1557,6 @@ ssh-keygen -t ed25519 -C "backup@$(hostname)"
 # استبدل TARGET_USER بالمستخدم على الجهاز المستهدف
 # استبدل TARGET_IP بعنوان IP الجهاز المستهدف
 ssh-copy-id TARGET_USER@TARGET_IP
-# مثال: ssh-copy-id m@192.168.100.17
 
 # اختبار الاتصال (يجب ألا يطلب كلمة مرور)
 ssh TARGET_USER@TARGET_IP "hostname && echo 'الاتصال ناجح!'"
@@ -1840,56 +1836,6 @@ ls -la /mnt/d/
 
 <div dir="rtl">
 
-#### الخيار الثاني: Cygwin (طريقة بديلة)
-
-**1. تنزيل Cygwin:**
-   - الموقع: https://www.cygwin.com/
-   - تنزيل: `setup-x86_64.exe`
-
-**2. التثبيت مع الحزم المطلوبة:**
-   - شغّل المثبت
-   - اختر الحزم: `openssh`, `rsync`, `cygrunsrv`
-
-**3. إعداد SSH:**
-
-</div>
-
-```bash
-# افتح طرفية Cygwin
-ssh-host-config -y
-
-# ابدأ خدمة SSH
-cygrunsrv -S sshd
-```
-
-<div dir="rtl">
-
-**4. إعداد مفتاح SSH:**
-
-</div>
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-nano ~/.ssh/authorized_keys
-# الصق المفتاح العام من خادم النسخ الاحتياطي
-chmod 600 ~/.ssh/authorized_keys
-```
-
-<div dir="rtl">
-
-**5. مسارات Windows في Cygwin:**
-
-</div>
-
-```
-C:\ = /cygdrive/c/
-D:\ = /cygdrive/d/
-E:\ = /cygdrive/e/
-```
-
-<div dir="rtl">
-
 ---
 
 ### إعداد أجهزة macOS
@@ -1946,30 +1892,6 @@ chmod 600 ~/.ssh/authorized_keys
 
 <div dir="rtl">
 
-#### الخطوة 3: إعداد جدار الحماية
-
-</div>
-
-```bash
-# السماح لـ SSH عبر جدار الحماية
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/sbin/sshd
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/sbin/sshd
-```
-
-<div dir="rtl">
-
-#### الخطوة 4: الاختبار من خادم النسخ الاحتياطي
-
-</div>
-
-```bash
-# استبدل MAC_USER و MAC_IP بقيمك
-sudo -u backupuser ssh MAC_USER@MAC_IP "sw_vers"
-sudo -u backupuser ssh MAC_USER@MAC_IP "ls -la /Users"
-```
-
-<div dir="rtl">
-
 ---
 
 ### قائمة التحقق الأمنية ✅
@@ -2022,7 +1944,6 @@ sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /home"
 sudo -u backupuser ssh TARGET_USER@TARGET_IP "df -h"
 
 # 8. التحقق من عدم طلب كلمة مرور
-# يجب أن يكتمل فوراً بدون طلب أي شيء
 sudo -u backupuser ssh -o BatchMode=yes TARGET_USER@TARGET_IP "date"
 
 # 9. اختبار مع تفاصيل (debugging)
@@ -2036,13 +1957,13 @@ ssh -i /home/backupuser/.ssh/id_ed25519 TARGET_USER@TARGET_IP -v
 </div>
 
 ```bash
-# مثال 1: نسخ من جهاز Linux
+# مثال: جهاز Linux
 sudo -u backupuser ssh m@192.168.100.17 "ls -lah /home/m"
 
-# مثال 2: نسخ من جهاز Windows (WSL)
-sudo -u backupuser ssh wsluser@192.168.100.20 "ls -lah /mnt/c/Users"
+# مثال: جهاز Windows (WSL)
+sudo -u backupuser ssh wsluser@192.168.100.20 "ls -lah /mnt/c"
 
-# مثال 3: نسخ من جهاز macOS
+# مثال: جهاز macOS
 sudo -u backupuser ssh macuser@192.168.100.30 "ls -lah /Users"
 ```
 
@@ -2119,67 +2040,19 @@ BACKUP_USER="backupuser"
 # موقع مفتاح SSH
 SSH_KEY="/home/backupuser/.ssh/id_ed25519"
 
-# سياسة الاحتفاظ (عدّلها حسب احتياجاتك)
-RETENTION_DAILY=7        # الاحتفاظ بالنسخ اليومية لمدة 7 أيام
-RETENTION_WEEKLY=4       # الاحتفاظ بالنسخ الأسبوعية لمدة 4 أسابيع
-RETENTION_MONTHLY=12     # الاحتفاظ بالنسخ الشهرية لمدة 12 شهر
+# سياسة الاحتفاظ
+RETENTION_DAILY=7
+RETENTION_WEEKLY=4
+RETENTION_MONTHLY=12
 
-# التنبيهات عبر البريد الإلكتروني
+# التنبيهات
 ENABLE_ALERTS="true"
 ALERT_EMAIL="admin@example.com"
-EMAIL_FROM="backup@$(hostname)"
-
-# اختياري: البريد عبر msmtp
-MSMTP_ACCOUNT="default"
-
-# اختياري: التشفير
-ENABLE_ENCRYPTION="false"
-GPG_RECIPIENT="admin@example.com"
-
-# إعدادات الشبكة
-SSH_TIMEOUT=20
-SSH_KEEPALIVE=60
-SSH_RETRY_COUNT=3
-
-# الأداء
-MAX_PARALLEL_JOBS=2
-BANDWIDTH_LIMIT=""           # فارغ = غير محدود، أو "5000" لـ 5MB/s
-COMPRESSION_LEVEL=6          # 0-9، الأعلى = ضغط أكثر
-
-# متقدم
-ENABLE_DEDUPLICATION="true"  # استخدام الروابط الصلبة
-VERIFY_CHECKSUMS="false"     # أبطأ لكن أكثر أماناً
-QUARANTINE_SUSPICIOUS="true"
 ```
 
 <div dir="rtl">
 
 ### الخطوة 2: إضافة الأجهزة للنسخ الاحتياطي
-
-**الطريقة أ: تفاعلية (موصى بها)**
-
-</div>
-
-```bash
-sudo ./scripts/discover_devices.sh --add
-```
-
-<div dir="rtl">
-
-اتبع المطالبات:
-
-</div>
-
-```
-Enter device IP address: 192.168.100.17
-Enter device hostname: my-pc
-Enter SSH username: m
-Enter paths to backup: /home/m /var/www
-```
-
-<div dir="rtl">
-
-**الطريقة ب: التحرير اليدوي**
 
 </div>
 
@@ -2193,26 +2066,14 @@ sudo nano /backup/config/discovered_devices.txt
 
 <div dir="rtl">
 
-أضف أجهزتك (جهاز واحد في كل سطر):
+أضف أجهزتك:
 
 </div>
 
 ```
-# الصيغة: عنوان_IP  اسم_الجهاز  مستخدم_SSH  مسار1  مسار2  مسار3
-192.168.100.17  my-pc       m       /home/m  /var/www
-192.168.100.20  webserver   admin   /var/www  /etc/nginx
-192.168.100.30  database    dbuser  /var/lib/mysql  /etc/mysql
-10.0.0.50       fileserver  root    /home  /srv/shares
-```
-
-<div dir="rtl">
-
-**إنشاء المجلدات للأجهزة:**
-
-</div>
-
-```bash
-sudo ./scripts/discover_devices.sh --init
+# الصيغة: IP  اسم_الجهاز  مستخدم  مسار1  مسار2
+192.168.100.17  my-pc      m      /home/m  /var/www
+192.168.100.20  webserver  admin  /var/www /etc/nginx
 ```
 
 <div dir="rtl">
@@ -2231,34 +2092,11 @@ sudo ./scripts/discover_devices.sh --init
 # نسخ احتياطي عادي
 sudo ./scripts/backup_manager.sh
 
-# وضع الاختبار (dry-run، بدون نسخ فعلي)
+# وضع الاختبار
 sudo ./scripts/backup_manager.sh --test
 
 # إخراج مفصّل
 sudo ./scripts/backup_manager.sh --verbose
-
-# اختبار مع إخراج مفصّل
-sudo ./scripts/backup_manager.sh --test --verbose
-```
-
-<div dir="rtl">
-
-### إدارة الأجهزة
-
-</div>
-
-```bash
-# إضافة جهاز جديد بشكل تفاعلي
-sudo ./scripts/discover_devices.sh --add
-
-# عرض جميع الأجهزة المُعدّة
-sudo ./scripts/discover_devices.sh --list
-
-# إزالة جهاز
-sudo ./scripts/discover_devices.sh --remove 192.168.100.17
-
-# إنشاء المجلدات لجميع الأجهزة
-sudo ./scripts/discover_devices.sh --init
 ```
 
 <div dir="rtl">
@@ -2268,47 +2106,14 @@ sudo ./scripts/discover_devices.sh --init
 </div>
 
 ```bash
-# نسخ احتياطي يومي الساعة 11 صباحاً (افتراضي)
+# يومي الساعة 11 صباحاً
 sudo ./scripts/setup_cron.sh --daily
 
-# نسخ احتياطي يومي الساعة 2 صباحاً
+# يومي الساعة 2 صباحاً
 sudo ./scripts/setup_cron.sh --night
 
-# نسخ احتياطي كل ساعة
-sudo ./scripts/setup_cron.sh --hourly
-
-# نسخ احتياطي أسبوعي (الأحد 11 صباحاً)
-sudo ./scripts/setup_cron.sh --weekly
-
-# جدول مخصص (3 صباحاً يومياً)
-sudo ./scripts/setup_cron.sh --time "0 3 * * *"
-
-# عرض مهام cron الحالية
+# عرض المهام الحالية
 sudo ./scripts/setup_cron.sh --list
-
-# إزالة جميع مهام النسخ الاحتياطي
-sudo ./scripts/setup_cron.sh --remove
-```
-
-<div dir="rtl">
-
-### المراقبة والحالة
-
-</div>
-
-```bash
-# فحص حالة النظام
-sudo /backup/scripts/backup_status.sh
-
-# عرض سجلات النسخ الأخيرة
-tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
-
-# فحص استخدام المساحة
-df -h /backup
-du -sh /backup/devices/*
-
-# عرض النسخ الأخيرة (آخر 24 ساعة)
-find /backup/devices -name "backup_*" -mtime -1 -type d
 ```
 
 <div dir="rtl">
@@ -2323,24 +2128,11 @@ find /backup/devices -name "backup_*" -mtime -1 -type d
 
 ```
 /backup/
-├── devices/                          # جميع نسخ الأجهزة
-│   ├── 192.168.100.17/              # جهاز حسب عنوان IP
-│   │   ├── current/                 # أحدث نسخة تزايدية
-│   │   ├── history/                 # النسخ التاريخية (GFS)
-│   │   │   ├── daily/              # آخر 7 أيام
-│   │   │   ├── weekly/             # آخر 4 أسابيع
-│   │   │   └── monthly/            # آخر 12 شهر
-│   │   ├── logs/                    # سجلات خاصة بالجهاز
-│   │   └── deleted/                 # أرشيف الملفات المحذوفة
-│   │
-├── config/                          # ملفات الإعدادات
-│   ├── backup_config.conf          # الإعدادات الرئيسية
-│   ├── discovered_devices.txt      # قائمة الأجهزة
-│   └── exclude.list                # أنماط الاستثناء
-│
-├── scripts/                         # جميع السكريبتات
-├── logs/                            # السجلات العامة
-└── quarantine/                      # الملفات المشبوهة
+├── devices/          # نسخ الأجهزة
+├── config/           # الإعدادات
+├── scripts/          # السكريبتات
+├── logs/             # السجلات
+└── quarantine/       # الملفات المشبوهة
 ```
 
 <div dir="rtl">
@@ -2351,13 +2143,14 @@ find /backup/devices -name "backup_*" -mtime -1 -type d
 
 ## 📊 المراقبة
 
-### فحص الحالة
-
 </div>
 
 ```bash
-# تشغيل سكريبت الحالة
+# فحص الحالة
 sudo /backup/scripts/backup_status.sh
+
+# عرض السجلات
+tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
 ```
 
 <div dir="rtl">
@@ -2366,20 +2159,15 @@ sudo /backup/scripts/backup_status.sh
 
 <a name="حل-المشكلات-ar"></a>
 
-## 🐛 حل المشكلات الشائعة
+## 🐛 حل المشكلات
 
-### 1. فشل اتصال SSH
-
-**الحل:**
+### مشكلة: فشل اتصال SSH
 
 </div>
 
 ```bash
-# اختبار اتصال SSH يدوياً
+# اختبار يدوي
 sudo -u backupuser ssh TARGET_USER@TARGET_IP
-
-# التحقق من وجود مفتاح SSH
-ls -la /home/backupuser/.ssh/
 
 # إعادة نسخ المفتاح
 sudo -u backupuser ssh-copy-id TARGET_USER@TARGET_IP
@@ -2387,17 +2175,13 @@ sudo -u backupuser ssh-copy-id TARGET_USER@TARGET_IP
 
 <div dir="rtl">
 
-### 2. رفض الصلاحيات
-
-**الحل:**
+### مشكلة: رفض الصلاحيات
 
 </div>
 
 ```bash
-# على الجهاز المستهدف، اضبط الصلاحيات
-sudo chmod -R o+rX /var/www
-# أو
-sudo usermod -aG www-data TARGET_USER
+# على الجهاز المستهدف
+sudo chmod -R o+rX /path/to/backup
 ```
 
 <div dir="rtl">
@@ -2406,12 +2190,12 @@ sudo usermod -aG www-data TARGET_USER
 
 <a name="المساهمة-ar"></a>
 
-## 🤝 المساهمة في المشروع
+## 🤝 المساهمة
 
-المساهمات مرحب بها! لا تتردد في:
-- 🐛 الإبلاغ عن الأخطاء
-- ✨ اقتراح ميزات جديدة
-- 🔧 إرسال Pull Requests
+المساهمات مرحب بها! 
+- 🐛 أبلغ عن الأخطاء
+- ✨ اقترح ميزات
+- 🔧 أرسل Pull Requests
 
 ---
 
@@ -2419,31 +2203,24 @@ sudo usermod -aG www-data TARGET_USER
 
 ## 📜 الترخيص
 
-هذا المشروع مرخص بموجب **ترخيص MIT**.
-
-راجع ملف [LICENSE](LICENSE) للتفاصيل الكاملة.
+مرخص بموجب **MIT License** - راجع [LICENSE](LICENSE)
 
 ---
 
 ## 👤 المؤلف
 
 **61Maz19**
-
-- 🐙 GitHub: [@61Maz19](https://github.com/61Maz19)
-- 📦 المشروع: [linux-backup-manager](https://github.com/61Maz19/linux-backup-manager)
-- 🐛 الإبلاغ عن خطأ: [فتح Issue](https://github.com/61Maz19/linux-backup-manager/issues)
+- GitHub: [@61Maz19](https://github.com/61Maz19)
+- المشروع: [linux-backup-manager](https://github.com/61Maz19/linux-backup-manager)
 
 ---
 
 ## ⭐ دعم المشروع
 
-إذا وجدت هذا المشروع مفيداً:
-
-- ⭐ ضع نجمة للمستودع على GitHub
-- 🐛 أبلغ عن الأخطاء والمشكلات
-- 💡 اقترح ميزات جديدة
-- 🤝 ساهم بتحسينات الكود
-- 📢 شارك المشروع مع الآخرين
+- ⭐ ضع نجمة على GitHub
+- 🐛 أبلغ عن الأخطاء
+- 💡 اقترح ميزات
+- 🤝 ساهم بالكود
 
 ---
 
@@ -2451,45 +2228,21 @@ sudo usermod -aG www-data TARGET_USER
 
 ### الإصدار 3.0.0 (2025-11-04)
 
-**إصدار رئيسي - إعادة كتابة كاملة**
-
 #### ✨ ميزات جديدة
-- تطبيق استراتيجية دوران GFS
-- نظام إشعارات متعدد الطرق
+- استراتيجية دوران GFS
+- نظام إشعارات متعدد
 - إدارة شاملة للأجهزة
-- جدولة تلقائية مرنة
-- تكامل أمني كامل
+- جدولة تلقائية
 
-#### 🔐 تحسينات الأمان
+#### 🔐 الأمان
 - تكامل ClamAV
 - حماية fail2ban
 - مفاتيح SSH فقط
-- نظام حجر صحي
-
-#### ⚡ تحسينات الأداء
-- روابط صلبة (توفير 90٪)
-- مهام متوازية
-- SSH keep-alive
 
 ---
-
-## 📚 موارد إضافية
-
-### المجتمع
-- [GitHub Issues](https://github.com/61Maz19/linux-backup-manager/issues) - تقارير الأخطاء
-- [GitHub Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) - الدعم
-
----
-
-</div>
-
-<div align="center">
 
 **صُنع بـ ❤️ بواسطة [61Maz19](https://github.com/61Maz19)**
 
-**آخر تحديث:** 2025-11-04
-
-[![GitHub Stars](https://img.shields.io/github/stars/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/network/members)
+**آخر تحديث:** 2025-11-04 09:42 UTC
 
 </div>
