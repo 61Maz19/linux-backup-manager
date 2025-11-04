@@ -248,26 +248,38 @@ sudo usermod -aG www-data backup
 
 ---
 
+---
+
 ### Setup for Windows Devices
+
+Windows devices can be backed up using two methods:
+1. **WSL (Windows Subsystem for Linux)** - Recommended, modern approach
+2. **Cygwin** - Alternative for older Windows versions
+
+---
 
 #### Option A: Windows Subsystem for Linux (WSL) - Recommended
 
-**On Windows PC (Run as Administrator):**
+**Requirements:** Windows 10 version 2004+ or Windows 11
 
-1. **Enable WSL:**
+**On Windows PC (Run PowerShell as Administrator):**
+
+**1. Enable WSL:**
 ```powershell
-# Open PowerShell as Administrator
+# Install WSL with Ubuntu
 wsl --install
+
 # Restart computer if prompted
 ```
 
-2. **Install Ubuntu distribution:**
+**2. After restart, complete Ubuntu setup:**
 ```powershell
-wsl --install -d Ubuntu
-# Follow prompts to create username and password
+# Ubuntu will open automatically
+# Create username and password when prompted
+# Example username: wsluser
 ```
 
-3. **Inside WSL Ubuntu, install SSH:**
+**3. Inside WSL Ubuntu, install SSH server:**
 ```bash
 # Update package list
 sudo apt update
@@ -279,89 +291,304 @@ sudo apt install openssh-server -y
 sudo nano /etc/ssh/sshd_config
 ```
 
-Ensure these settings:
+**Ensure these settings:**
 ```
 Port 22
-PasswordAuthentication no
+ListenAddress 0.0.0.0
 PubkeyAuthentication yes
+PasswordAuthentication yes  # Will disable after SSH key setup
 ```
 
-4. **Start SSH service:**
+**4. Start SSH service:**
 ```bash
 # Start SSH
 sudo service ssh start
 
-# Make SSH start automatically
+# Make SSH auto-start on WSL launch
 echo 'sudo service ssh start' >> ~/.bashrc
 
 # Check status
 sudo service ssh status
 ```
 
-5. **Configure Windows Firewall:**
+**5. Get Windows IP address:**
+```powershell
+# In PowerShell
+ipconfig
+
+# Look for "IPv4 Address" under your active network adapter
+# Example: 192.168.1.25
+```
+
+**6. Configure Windows Firewall:**
 ```powershell
 # Run in PowerShell as Administrator
 New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
 ```
 
-6. **Add SSH key from backup server:**
+**7. Add SSH key from backup server:**
+
+**On BACKUP SERVER:**
 ```bash
-# From backup server
-sudo -u backup ssh-copy-id your-windows-username@windows-pc-ip
+# Replace 'wsluser' with YOUR WSL username
+# Replace '192.168.1.25' with your Windows PC's IP
+sudo -u backupuser ssh-copy-id wsluser@192.168.1.25
 
 # Test connection
-sudo -u backup ssh your-windows-username@windows-pc-ip "uname -a"
+sudo -u backupuser ssh wsluser@192.168.1.25 "hostname"
 ```
 
-7. **Access Windows files from WSL:**
+**8. Understanding Windows paths in WSL:**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Windows Path         │  WSL Path                         │
+├──────────────────────────────────────────────────────────┤
+│ C:\                  │  /mnt/c/                          │
+│ D:\                  │  /mnt/d/                          │
+│ E:\                  │  /mnt/e/                          │
+│                      │                                   │
+│ C:\Users\John        │  /mnt/c/Users/John                │
+│ C:\Users\John\Documents  │  /mnt/c/Users/John/Documents  │
+│ D:\Projects          │  /mnt/d/Projects                  │
+│ D:\Backups\Data      │  /mnt/d/Backups/Data              │
+└──────────────────────────────────────────────────────────┘
+```
+
+**9. Test access to Windows files:**
 ```bash
-# Windows C: drive is mounted at:
-ls -la /mnt/c/Users/YourUsername/
-
-# Windows D: drive:
-ls -la /mnt/d/
+# From backup server
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/c"
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/c/Users"
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/d"
 ```
 
-**Example backup paths for Windows:**
+**10. Add to discovered_devices.txt:**
+```bash
+# Format: IP  HOSTNAME  WSL_USER  PATH1  PATH2  PATH3
+# Use /mnt/c/ for C: drive, /mnt/d/ for D: drive, etc.
+
+192.168.1.25  windows-pc  wsluser  /mnt/c/Users/John/Documents  /mnt/d/Projects
+```
+
+**Common Windows backup paths (WSL style):**
 ```
 /mnt/c/Users/YourName/Documents
 /mnt/c/Users/YourName/Desktop
+/mnt/c/Users/YourName/Pictures
+/mnt/c/Users/YourName/Downloads
 /mnt/d/Projects
+/mnt/d/Data
 ```
 
-#### Option B: Cygwin (Alternative Method)
+---
 
-1. **Download Cygwin:**
-   - Visit: https://www.cygwin.com/
-   - Download: `setup-x86_64.exe`
+#### Option B: Cygwin - Alternative Method
 
-2. **Install with required packages:**
-   - Run installer
-   - Select packages: `openssh`, `rsync`, `cygrunsrv`
+**Requirements:** Any Windows version (XP+)
 
-3. **Configure SSH:**
+**1. Download Cygwin:**
+- Visit: https://www.cygwin.com/
+- Download: `setup-x86_64.exe` (64-bit) or `setup-x86.exe` (32-bit)
+
+**2. Install Cygwin with required packages:**
+- Run installer
+- Choose "Install from Internet"
+- Select installation directory (default: `C:\cygwin64`)
+- Select packages:
+  - `openssh` (Net category)
+  - `rsync` (Net category)
+  - `cygrunsrv` (Admin category)
+  - `nano` or `vim` (Editors category)
+
+**3. Configure SSH server:**
 ```bash
 # Open Cygwin Terminal
+
+# Configure SSH host
 ssh-host-config -y
+
+# When prompted:
+# - CYGWIN value: ntsec
+# - Privileged user: yes
+# - Username: cyg_server (default)
 
 # Start SSH service
 cygrunsrv -S sshd
+
+# Or manually for testing:
+/usr/sbin/sshd
 ```
 
-4. **Setup SSH key:**
+**4. Configure Windows Firewall:**
+```powershell
+# In PowerShell as Administrator
+New-NetFirewallRule -Name 'Cygwin-SSH' -DisplayName 'Cygwin SSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
+
+**5. Add SSH key from backup server:**
+
+**On BACKUP SERVER:**
 ```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-nano ~/.ssh/authorized_keys
-# Paste public key from backup server
-chmod 600 ~/.ssh/authorized_keys
+# Replace 'youruser' with your Windows username
+# Replace '192.168.1.25' with Windows PC's IP
+sudo -u backupuser ssh-copy-id youruser@192.168.1.25
+
+# Test connection
+sudo -u backupuser ssh youruser@192.168.1.25 "hostname"
 ```
 
-5. **Windows paths in Cygwin:**
+**6. Understanding Windows paths in Cygwin:**
+
 ```
-C:\ = /cygdrive/c/
-D:\ = /cygdrive/d/
+┌──────────────────────────────────────────────────────────────┐
+│ Windows Path         │  Cygwin Path                          │
+├──────────────────────────────────────────────────────────────┤
+│ C:\                  │  /cygdrive/c/                         │
+│ D:\                  │  /cygdrive/d/                         │
+│ E:\                  │  /cygdrive/e/                         │
+│                      │                                       │
+│ C:\Users\John        │  /cygdrive/c/Users/John               │
+│ C:\Users\John\Documents  │  /cygdrive/c/Users/John/Documents │
+│ D:\Projects          │  /cygdrive/d/Projects                 │
+│ D:\Backups\Data      │  /cygdrive/d/Backups/Data             │
+└──────────────────────────────────────────────────────────────┘
 ```
+
+**7. Test access to Windows files:**
+```bash
+# From backup server
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/c"
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/c/Users"
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/d"
+```
+
+**8. Add to discovered_devices.txt:**
+```bash
+# Format: IP  HOSTNAME  WINDOWS_USER  PATH1  PATH2  PATH3
+# Use /cygdrive/c/ for C: drive, /cygdrive/d/ for D: drive, etc.
+
+192.168.1.25  windows-pc  youruser  /cygdrive/c/Users/John/Documents  /cygdrive/d/Projects
+```
+
+**Common Windows backup paths (Cygwin style):**
+```
+/cygdrive/c/Users/YourName/Documents
+/cygdrive/c/Users/YourName/Desktop
+/cygdrive/c/Users/YourName/Pictures
+/cygdrive/c/Users/YourName/Downloads
+/cygdrive/d/Projects
+/cygdrive/d/Data
+```
+
+---
+
+#### Windows Troubleshooting
+
+**Issue: SSH service won't start in WSL**
+```bash
+# Check if service is running
+sudo service ssh status
+
+# If not running, check for errors
+sudo /usr/sbin/sshd -d
+
+# Common fix: regenerate host keys
+sudo ssh-keygen -A
+sudo service ssh restart
+```
+
+**Issue: Can't access Windows files from WSL**
+```bash
+# Check if drives are mounted
+ls -la /mnt/
+
+# If C: drive is missing, mount it
+sudo mkdir -p /mnt/c
+sudo mount -t drvfs C: /mnt/c
+
+# Make it permanent (add to /etc/fstab)
+echo "C: /mnt/c drvfs defaults 0 0" | sudo tee -a /etc/fstab
+```
+
+**Issue: Permission denied on Windows files**
+```bash
+# In WSL, Windows files might have different permissions
+# Check actual permissions
+ls -la /mnt/c/Users/YourName/
+
+# If backup fails, try running WSL as Administrator
+# Or adjust Windows folder permissions:
+# Right-click folder → Properties → Security → Edit
+# Give your user "Read" permission
+```
+
+**Issue: Cygwin SSH not accessible from network**
+```bash
+# Edit SSH config to listen on all interfaces
+nano /etc/sshd_config
+
+# Ensure:
+ListenAddress 0.0.0.0
+
+# Restart service
+cygrunsrv -E sshd
+cygrunsrv -S sshd
+```
+
+---
+
+#### Windows Paths Quick Reference
+
+**WSL (Recommended):**
+```bash
+# Examples for discovered_devices.txt
+192.168.1.25  win-laptop  wsluser  /mnt/c/Users/John/Documents
+192.168.1.26  win-desktop wsluser  /mnt/c/Users/Sarah/Desktop  /mnt/d/Projects
+192.168.1.27  win-server  wsluser  /mnt/c/inetpub/wwwroot  /mnt/d/Databases
+```
+
+**Cygwin (Alternative):**
+```bash
+# Examples for discovered_devices.txt
+192.168.1.25  win-laptop  john   /cygdrive/c/Users/John/Documents
+192.168.1.26  win-desktop sarah  /cygdrive/c/Users/Sarah/Desktop  /cygdrive/d/Projects
+192.168.1.27  win-server  admin  /cygdrive/c/inetpub/wwwroot  /cygdrive/d/Databases
+```
+
+**Test commands:**
+```bash
+# Test WSL paths
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -lah /mnt/c/Users"
+
+# Test Cygwin paths
+sudo -u backupuser ssh john@192.168.1.25 "ls -lah /cygdrive/c/Users"
+
+# Test full backup (dry-run)
+sudo -u backupuser rsync -avz --dry-run wsluser@192.168.1.25:/mnt/c/Users/John/Documents/ /tmp/test/
+```
+
+---
+
+### Windows vs Linux: Path Comparison Table
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ System   │ Method  │ C: Drive        │ D: Drive        │ Example Path   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Windows  │ WSL     │ /mnt/c/         │ /mnt/d/         │ /mnt/c/Users   │
+│ Windows  │ Cygwin  │ /cygdrive/c/    │ /cygdrive/d/    │ /cygdrive/c/Users │
+│ Linux    │ Native  │ N/A             │ N/A             │ /home/user     │
+│ macOS    │ Native  │ N/A             │ N/A             │ /Users/user    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Remember:**
+- ✅ **WSL uses:** `/mnt/c/`, `/mnt/d/`, etc.
+- ✅ **Cygwin uses:** `/cygdrive/c/`, `/cygdrive/d/`, etc.
+- ❌ **Never use:** `C:\` or `D:\` (Windows-style paths won't work in rsync/SSH)
+
+---
 
 ---
 
@@ -498,6 +725,8 @@ sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
 - **Network:** Connectivity to target devices
 - **Software:** bash 5.0+, git
 
+---
+
 ### Quick Installation
 
 ```bash
@@ -518,31 +747,87 @@ sudo ./scripts/setup_firewall.sh
 sudo ./scripts/setup_monitoring.sh --basic
 ```
 
+---
+
 ### Manual Installation
 
+**Step 1: Install Required Packages**
+
+**On Ubuntu/Debian:**
 ```bash
-# Install required packages
 sudo apt update
 sudo apt install -y rsync openssh-client openssh-server cron wget curl \
-                     mailutils msmtp msmtp-mta net-tools tree gzip pigz gpg
+                     mailutils msmtp msmtp-mta net-tools tree gzip pigz gpg \
+                     clamav clamav-daemon fail2ban ufw
+```
 
-# For security features
-sudo apt install -y clamav clamav-daemon fail2ban ufw
+**On CentOS/RHEL/Rocky/AlmaLinux:**
+```bash
+sudo yum install -y rsync openssh-clients openssh-server cronie wget curl \
+                    mailx msmtp net-tools tree gzip pigz gnupg2 \
+                    clamav clamd fail2ban firewalld
+```
 
-# Create directory structure
+**Step 2: Create Backup User (ONE TIME)**
+
+```bash
+# Check if backupuser already exists
+id backupuser 2>/dev/null
+
+# If it doesn't exist, create it:
+sudo useradd -m -s /bin/bash backupuser
+
+# Set a strong password
+sudo passwd backupuser
+
+# Grant sudo privileges (optional, only if needed for certain paths)
+sudo usermod -aG sudo backupuser      # Ubuntu/Debian
+sudo usermod -aG wheel backupuser     # CentOS/RHEL
+```
+
+**Step 3: Create Directory Structure**
+
+```bash
+# Create main directories
 sudo mkdir -p /backup/{config,devices,logs,scripts,quarantine}
+
+# Set ownership to backupuser
+sudo chown -R backupuser:backupuser /backup
+
+# Set secure permissions
 sudo chmod -R 750 /backup
+```
 
-# Create backup user
-sudo useradd -m -s /bin/bash backup
-sudo chown -R backup:backup /backup
+**Step 4: Generate SSH Key (as backupuser)**
 
+```bash
+# Switch to backupuser
+sudo su - backupuser
+
+# Generate SSH key pair (if doesn't exist)
+if [ ! -f ~/.ssh/id_ed25519 ]; then
+    ssh-keygen -t ed25519 -C "backupuser@$(hostname)"
+    # Press Enter 3 times (no passphrase for automation)
+fi
+
+# Display public key (you'll need this for target devices)
+cat ~/.ssh/id_ed25519.pub
+
+# Exit back to your user
+exit
+```
+
+**Step 5: Copy Scripts and Configuration**
+
+```bash
 # Copy scripts
 sudo cp -r scripts/* /backup/scripts/
 sudo chmod +x /backup/scripts/*.sh
+sudo chown -R backupuser:backupuser /backup/scripts/
 
 # Copy configuration templates
 sudo cp config/*.example /backup/config/
+sudo chown backupuser:backupuser /backup/config/*.example
 ```
 
 ---
@@ -553,7 +838,10 @@ sudo cp config/*.example /backup/config/
 
 ```bash
 # Copy example configuration
-sudo cp config/backup_config.conf.example /backup/config/backup_config.conf
+sudo cp /backup/config/backup_config.conf.example /backup/config/backup_config.conf
+
+# Set ownership
+sudo chown backupuser:backupuser /backup/config/backup_config.conf
 
 # Edit configuration
 sudo nano /backup/config/backup_config.conf
@@ -562,117 +850,171 @@ sudo nano /backup/config/backup_config.conf
 **Key settings to configure:**
 
 ```bash
-# User running backups
-BACKUP_USER="backup"
+# ============================================
+# BACKUP SERVER USER
+# ============================================
+BACKUP_USER="backupuser"
 
-# SSH key location
-SSH_KEY="/home/backup/.ssh/id_ed25519"
+# ============================================
+# SSH KEY LOCATION
+# ============================================
+SSH_KEY="/home/backupuser/.ssh/id_ed25519"
 
-# Retention policy (adjust based on your needs)
+# ============================================
+# RETENTION POLICY
+# ============================================
 RETENTION_DAILY=7        # Keep daily backups for 7 days
 RETENTION_WEEKLY=4       # Keep weekly backups for 4 weeks
 RETENTION_MONTHLY=12     # Keep monthly backups for 12 months
 
-# Email alerts
+# ============================================
+# EMAIL ALERTS
+# ============================================
 ENABLE_ALERTS="true"
 ALERT_EMAIL="admin@example.com"
-EMAIL_FROM="backup@$(hostname)"
-
-# Optional: Email via msmtp
+EMAIL_FROM="backupuser@$(hostname)"
 MSMTP_ACCOUNT="default"
 
-# Optional: Encryption
+# ============================================
+# ENCRYPTION (Optional)
+# ============================================
 ENABLE_ENCRYPTION="false"
 GPG_RECIPIENT="admin@example.com"
 
-# Network settings
+# ============================================
+# NETWORK SETTINGS
+# ============================================
 SSH_TIMEOUT=20
 SSH_KEEPALIVE=60
 SSH_RETRY_COUNT=3
 
-# Performance
+# ============================================
+# PERFORMANCE
+# ============================================
 MAX_PARALLEL_JOBS=2
 BANDWIDTH_LIMIT=""           # Empty = unlimited, or "5000" for 5MB/s
 COMPRESSION_LEVEL=6          # 0-9, higher = more compression
 
-# Advanced
-ENABLE_DEDUPLICATION="true"  # Use hard links
+# ============================================
+# ADVANCED OPTIONS
+# ============================================
+ENABLE_DEDUPLICATION="true"  # Use hard links to save space
 VERIFY_CHECKSUMS="false"     # Slower but safer
-QUARANTINE_SUSPICIOUS="true"
+QUARANTINE_SUSPICIOUS="true" # Quarantine files detected by ClamAV
 ```
 
+---
+
 ### Step 2: Add Devices to Backup
+
+**⚠️ IMPORTANT:** Use the correct username for EACH target device!
 
 **Method A: Interactive (Recommended)**
 
 ```bash
-sudo ./scripts/discover_devices.sh --add
+sudo -u backupuser /backup/scripts/discover_devices.sh --add
 ```
 
 Follow the prompts:
 ```
-Enter device IP address: 192.168.1.10
-Enter device hostname: webserver
-Enter SSH username [root]: backup
-Enter paths to backup [/home /etc]: /var/www /etc/nginx /var/log
+Enter device IP address: 192.168.1.17
+Enter device hostname: my-laptop
+Enter SSH username: m                    # ← Username on TARGET device
+Enter paths to backup: /home/m /var/www
 ```
 
 **Method B: Manual Edit**
 
 ```bash
 # Copy example
-sudo cp config/discovered_devices.txt.example /backup/config/discovered_devices.txt
+sudo cp /backup/config/discovered_devices.txt.example /backup/config/discovered_devices.txt
+
+# Set ownership
+sudo chown backupuser:backupuser /backup/config/discovered_devices.txt
 
 # Edit file
 sudo nano /backup/config/discovered_devices.txt
 ```
 
-Add your devices (one per line):
-```
-# Format: IP_ADDRESS  HOSTNAME  SSH_USER  PATH1  PATH2  PATH3
-192.168.1.10  webserver   backup  /var/www  /etc/nginx
-192.168.1.20  database    backup  /var/lib/mysql  /etc/mysql
-192.168.1.30  fileserver  backup  /home  /srv/shares
-10.0.0.50     devserver   backup  /home/developer/projects
+**Add your devices (one per line):**
+
+```bash
+# Format: IP_ADDRESS  HOSTNAME  TARGET_USER  PATH1  PATH2  PATH3
+#
+# IMPORTANT: TARGET_USER = username on the TARGET device, NOT "backupuser"
+#
+# Examples with REAL usernames:
+
+192.168.1.17   my-laptop    m        /home/m  /var/www
+192.168.1.20   webserver    admin    /var/www /etc/nginx
+192.168.1.30   database     dbadmin  /var/lib/mysql /etc/mysql
+10.0.0.50      devserver    john     /home/john/projects
+192.168.1.25   windows-pc   wsluser  /mnt/c/Users/YourName
 ```
 
 **Create folders for devices:**
 ```bash
-sudo ./scripts/discover_devices.sh --init
+sudo -u backupuser /backup/scripts/discover_devices.sh --init
 ```
+
+---
 
 ### Step 3: Configure Exclusions
 
 ```bash
 # Copy example
-sudo cp config/exclude.list.example /backup/config/exclude.list
+sudo cp /backup/config/exclude.list.example /backup/config/exclude.list
+
+# Set ownership
+sudo chown backupuser:backupuser /backup/config/exclude.list
 
 # Edit exclusions
 sudo nano /backup/config/exclude.list
 ```
 
-Common exclusions:
+**Common exclusions:**
 ```
 # Temporary files
 *.tmp
 *.temp
 *.cache
 *~
+*.swp
+*.bak
 
-# System directories
+# System directories (Linux)
 /proc/
 /sys/
 /dev/
+/run/
+/tmp/
 
 # Logs
 *.log.*
 *.log.gz
+*.log.bz2
 
 # Development
 node_modules/
 .git/
+.svn/
 __pycache__/
+*.pyc
+.venv/
+venv/
+
+# Large media caches
+.cache/
+Cache/
+cache/
+
+# Windows specific (if backing up WSL)
+pagefile.sys
+hiberfil.sys
+swapfile.sys
 ```
+
+---
 
 ### Step 4: Setup Email Alerts (Optional)
 
@@ -683,7 +1025,7 @@ __pycache__/
 sudo nano /etc/msmtprc
 ```
 
-For Gmail:
+**For Gmail:**
 ```
 defaults
 auth           on
@@ -702,8 +1044,10 @@ password       your-app-password-here
 
 **Get Gmail App Password:**
 1. Go to: https://myaccount.google.com/apppasswords
-2. Generate new app password
-3. Use it in msmtp configuration
+2. Select "Mail" and "Other (Custom name)"
+3. Enter "Backup System"
+4. Generate and copy the password
+5. Use it in msmtp configuration above
 
 **Secure the file:**
 ```bash
@@ -711,11 +1055,108 @@ sudo chmod 600 /etc/msmtprc
 sudo chown root:root /etc/msmtprc
 ```
 
-**Test email:**
+**Create log file:**
 ```bash
-echo "Test email from backup system" | sudo ./scripts/alert.sh "Test Alert"
+sudo touch /var/log/msmtp.log
+sudo chmod 666 /var/log/msmtp.log
 ```
 
+**Test email:**
+```bash
+echo "Test email from backup system on $(hostname)" | sudo -u backupuser /backup/scripts/alert.sh "Test Alert"
+```
+
+**Alternative: Using sendmail/mailx:**
+
+```bash
+# Install mailutils
+sudo apt install mailutils  # Ubuntu/Debian
+sudo yum install mailx      # CentOS/RHEL
+
+# Configure in backup_config.conf
+ALERT_METHOD="mail"  # or "sendmail"
+```
+
+---
+
+### Step 5: Verify Configuration
+
+**Run these checks before scheduling backups:**
+
+```bash
+# 1. Check backupuser exists and has correct home
+id backupuser
+ls -la /home/backupuser
+
+# 2. Check SSH key exists
+sudo -u backupuser ls -la /home/backupuser/.ssh/
+sudo -u backupuser cat /home/backupuser/.ssh/id_ed25519.pub
+
+# 3. Check /backup directory ownership
+ls -la /backup
+
+# 4. Check configuration files
+sudo -u backupuser cat /backup/config/backup_config.conf | grep BACKUP_USER
+sudo -u backupuser cat /backup/config/discovered_devices.txt
+
+# 5. Test SSH connections to all target devices
+# Replace with your actual target user and IP
+sudo -u backupuser ssh m@192.168.1.17 "echo SSH works"
+sudo -u backupuser ssh admin@192.168.1.20 "echo SSH works"
+
+# 6. Test backup script (dry-run)
+sudo -u backupuser /backup/scripts/backup_manager.sh --test --verbose
+
+# 7. Check disk space
+df -h /backup
+```
+
+**Expected output for check #3:**
+```
+drwxr-x--- 7 backupuser backupuser 4096 ... /backup
+```
+
+**If something is wrong, fix ownership:**
+```bash
+sudo chown -R backupuser:backupuser /backup
+sudo chmod -R 750 /backup
+```
+
+---
+
+## 🔄 Quick Reference
+
+### Important Paths
+```
+User home:        /home/backupuser
+SSH key:          /home/backupuser/.ssh/id_ed25519
+Backup directory: /backup
+Scripts:          /backup/scripts
+Config:           /backup/config
+Devices:          /backup/devices
+Logs:             /backup/logs
+```
+
+### Important Commands
+```bash
+# Switch to backupuser
+sudo su - backupuser
+
+# Run backup manually
+sudo -u backupuser /backup/scripts/backup_manager.sh
+
+# Test backup (dry-run)
+sudo -u backupuser /backup/scripts/backup_manager.sh --test
+
+# Add device
+sudo -u backupuser /backup/scripts/discover_devices.sh --add
+
+# Check status
+sudo -u backupuser /backup/scripts/backup_status.sh
+
+# View logs
+tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
+```
 ---
 
 ## 🚀 Usage
