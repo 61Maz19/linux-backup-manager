@@ -1378,9 +1378,6 @@ If you find this project useful:
 - [GitHub Issues](https://github.com/61Maz19/linux-backup-manager/issues) - Bug reports and feature requests
 - [GitHub Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) - Community support
 
----
-
-<div align="center">
 
 ---
 
