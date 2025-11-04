@@ -1165,69 +1165,70 @@ tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
 
 ```bash
 # Standard backup
-sudo ./scripts/backup_manager.sh
+sudo /backup/scripts/backup_manager.sh
 
 # Test mode (dry-run, no actual backup)
-sudo ./scripts/backup_manager.sh --test
+sudo /backup/scripts/backup_manager.sh --test
 
 # Verbose output
-sudo ./scripts/backup_manager.sh --verbose
+sudo /backup/scripts/backup_manager.sh --verbose
 
 # Test with verbose
-sudo ./scripts/backup_manager.sh --test --verbose
+sudo /backup/scripts/backup_manager.sh --test --verbose
 
 # Custom configuration file
-sudo ./scripts/backup_manager.sh --config /path/to/custom.conf
+sudo /backup/scripts/backup_manager.sh --config /path/to/custom.conf
 
 # Help
-./scripts/backup_manager.sh --help
+sudo /backup/scripts/backup_manager.sh --help
 ```
 
 ### Device Management
 
 ```bash
 # Add new device interactively
-sudo ./scripts/discover_devices.sh --add
+sudo /backup/scripts/discover_devices.sh --add
 
 # List all configured devices
-sudo ./scripts/discover_devices.sh --list
+sudo /backup/scripts/discover_devices.sh --list
 
 # Remove a device
-sudo ./scripts/discover_devices.sh --remove 192.168.1.10
+sudo /backup/scripts/discover_devices.sh --remove 192.168.1.10
 
 # Initialize folders for all devices in config
-sudo ./scripts/discover_devices.sh --init
+sudo /backup/scripts/discover_devices.sh --init
 
 # Help
-./scripts/discover_devices.sh --help
+sudo /backup/scripts/discover_devices.sh --help
 ```
 
 ### Automated Scheduling
 
 ```bash
 # Setup daily backups at 11 AM (default)
-sudo ./scripts/setup_cron.sh --daily
+sudo /backup/scripts/setup_cron.sh --daily
+
 
 # Setup daily backups at 2 AM
-sudo ./scripts/setup_cron.sh --night
+sudo /backup/scripts/setup_cron.sh --night
 
 # Setup hourly backups
-sudo ./scripts/setup_cron.sh --hourly
+sudo /scripts/setup_cron.sh --hourly
 
 # Setup weekly backups (Sunday 11 AM)
-sudo ./scripts/setup_cron.sh --weekly
+sudo /scripts/setup_cron.sh --weekly
 
 # Custom schedule (3 AM daily)
-sudo ./scripts/setup_cron.sh --time "0 3 * * *"
+sudo /scripts/setup_cron.sh --time "0 3 * * *"
 
 # List current cron jobs
-sudo ./scripts/setup_cron.sh --list
+sudo /scripts/setup_cron.sh --list
 
 # Remove all backup cron jobs
-sudo ./scripts/setup_cron.sh --remove
+sudo /scripts/setup_cron.sh --remove
 
 # Help
-./scripts/setup_cron.sh --help
+sudo /scripts/setup_cron.sh --help
 ```
 
 **Cron schedule format:**
@@ -2995,69 +2996,70 @@ tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
 
 ```bash
 # النسخ الاحتياطي القياسي
-sudo ./scripts/backup_manager.sh
+sudo /backup/scripts/backup_manager.sh
 
 # وضع الاختبار (dry-run، لا يوجد نسخ احتياطي فعلي)
-sudo ./scripts/backup_manager.sh --test
+sudo /backup/scripts/backup_manager.sh --test
 
 # إخراج مفصل
-sudo ./scripts/backup_manager.sh --verbose
+sudo /backup/scripts/backup_manager.sh --verbose
 
 # الاختبار مع الإخراج المفصل
-sudo ./scripts/backup_manager.sh --test --verbose
+sudo /backup/scripts/backup_manager.sh --test --verbose
 
 # ملف إعدادات مخصص
-sudo ./scripts/backup_manager.sh --config /path/to/custom.conf
+sudo /backup/scripts/backup_manager.sh --config /path/to/custom.conf
 
 # المساعدة
-./scripts/backup_manager.sh --help
+sudo /backup/scripts/backup_manager.sh --help
 ```
 
 ### إدارة الأجهزة
 
 ```bash
 # إضافة جهاز جديد تفاعليًا
-sudo ./scripts/discover_devices.sh --add
+sudo /backup/scripts/discover_devices.sh --add
 
 # سرد جميع الأجهزة المهيأة
-sudo ./scripts/discover_devices.sh --list
+sudo /backup/scripts/discover_devices.sh --list
 
 # إزالة جهاز
-sudo ./scripts/discover_devices.sh --remove 192.168.1.10
+sudo /backup/scripts/discover_devices.sh --remove 192.168.1.10
 
 # تهيئة المجلدات لجميع الأجهزة في الإعدادات
-sudo ./scripts/discover_devices.sh --init
+sudo /backup/scripts/discover_devices.sh --init
 
 # المساعدة
-./scripts/discover_devices.sh --help
+sudo /backup/scripts/discover_devices.sh --help
 ```
 
 ### الجدولة الآلية
 
 ```bash
 # إعداد النسخ الاحتياطية اليومية في الساعة 11 صباحًا (افتراضي)
-sudo ./scripts/setup_cron.sh --daily
+sudo /backup/scripts/setup_cron.sh --daily
+
 
 # إعداد النسخ الاحتياطية اليومية في الساعة 2 صباحًا
-sudo ./scripts/setup_cron.sh --night
+sudo /backup/scripts/setup_cron.sh --night
 
 # إعداد النسخ الاحتياطية كل ساعة
-sudo ./scripts/setup_cron.sh --hourly
+sudo /backup/scripts/setup_cron.sh --hourly
 
 # إعداد النسخ الاحتياطية الأسبوعية (الأحد 11 صباحًا)
-sudo ./scripts/setup_cron.sh --weekly
+sudo /backup/scripts/setup_cron.sh --weekly
 
 # جدول مخصص (الساعة 3 صباحًا يوميًا)
-sudo ./scripts/setup_cron.sh --time "0 3 * * *"
+sudo /backup/scripts/setup_cron.sh --time "0 3 * * *"
 
 # سرد مهام cron الحالية
-sudo ./scripts/setup_cron.sh --list
+sudo /backup/scripts/setup_cron.sh --list
 
 # إزالة جميع مهام cron للنسخ الاحتياطي
-sudo ./scripts/setup_cron.sh --remove
+sudo /backup/scripts/setup_cron.sh --remove
 
 # المساعدة
-./scripts/setup_cron.sh --help
+sudo /backup/scripts/setup_cron.sh --help
 ```
 
 **صيغة جدول Cron:**
