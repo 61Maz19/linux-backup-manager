@@ -41,7 +41,7 @@
 Built with enterprise environments in mind, this solution provides automated, secure, and efficient backups with minimal manual intervention.
 
 ---
-
+<a name="features"></a>
 ## ✨ Features
 
 ### Core Capabilities
@@ -94,7 +94,7 @@ Built with enterprise environments in mind, this solution provides automated, se
   - Cross-platform support (Linux, Windows via WSL, macOS)
 
 ---
-
+<a name="target-device-setup"></a>
 ## 🔧 Target Device Setup
 
 Before backing up a device, you must prepare it for SSH access from the backup server.
@@ -714,7 +714,7 @@ sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
 **All tests should pass without errors or password prompts!**
 
 ---
-
+<a name="installation"></a>
 ## 📥 Installation
 
 ### Prerequisites
@@ -831,7 +831,7 @@ sudo chown backupuser:backupuser /backup/config/*.example
 ```
 
 ---
-
+<a name="configuration"></a>
 ## ⚙️ Configuration
 
 ### Step 1: Main Configuration File
@@ -1158,7 +1158,7 @@ sudo -u backupuser /backup/scripts/backup_status.sh
 tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
 ```
 ---
-
+<a name="usage"></a>
 ## 🚀 Usage
 
 ### Manual Backup
@@ -1301,7 +1301,7 @@ echo "<h1>Report</h1><p>All systems operational</p>" | sudo ./scripts/alert.sh -
 ```
 
 ---
-
+<a name="directory-structure"></a>
 ## 📂 Directory Structure
 
 ```
@@ -1386,7 +1386,7 @@ Month 12: backup_2025-01-01_020000  ← Deleted after 12 months
 - **Savings: ~84%**
 
 ---
-
+<a name="monitoring"></a>
 ## 📊 Monitoring
 
 ### Built-in Status Check
@@ -1445,7 +1445,7 @@ sudo ./scripts/setup_monitoring.sh --full
 - System resource usage
 
 ---
-
+<a name="troubleshooting"></a>
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -1623,7 +1623,7 @@ sudo tail -f /backup/devices/*/logs/*.log
 ```
 
 ---
-
+<a name="contributing"></a>
 ## 🤝 Contributing
 
 Contributions are welcome and appreciated!
@@ -1691,7 +1691,7 @@ Contributions are welcome and appreciated!
 - 📊 Monitoring dashboard templates
 
 ---
-
+<a name="license"></a>
 ## 📜 License
 
 This project is licensed under the **MIT License**.
