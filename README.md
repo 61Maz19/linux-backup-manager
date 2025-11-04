@@ -1387,7 +1387,6 @@ If you find this project useful:
 <a name="arabic"></a>
 
 ---
-</div>
 
 <div align="center">
 
@@ -1497,7 +1496,7 @@ If you find this project useful:
 
 ### إعداد أجهزة Linux
 
-#### الخطوة 1: تثبيت خادم SSH
+#### الخطوة 1: تثبيت خادم SSH (على الجهاز المستهدف)
 
 **على Ubuntu/Debian:**
 
@@ -1526,20 +1525,20 @@ sudo systemctl status sshd
 
 <div dir="rtl">
 
-#### الخطوة 2: إنشاء مستخدم للنسخ الاحتياطي
+#### الخطوة 2: إنشاء مستخدم للنسخ الاحتياطي (على خادم النسخ الاحتياطي)
 
 </div>
 
 ```bash
 # إنشاء مستخدم مخصص للنسخ الاحتياطي
-sudo useradd -m -s /bin/bash backup
+sudo useradd -m -s /bin/bash backupuser
 
-# تعيين كلمة مرور قوية (اختياري، سنستخدم مفاتيح SSH)
-sudo passwd backup
+# تعيين كلمة مرور قوية
+sudo passwd backupuser
 
-# منح صلاحيات sudo إذا لزم الأمر لمسارات معينة
-sudo usermod -aG sudo backup      # Ubuntu/Debian
-sudo usermod -aG wheel backup     # CentOS/RHEL
+# منح صلاحيات sudo إذا لزم الأمر
+sudo usermod -aG sudo backupuser      # Ubuntu/Debian
+sudo usermod -aG wheel backupuser     # CentOS/RHEL
 ```
 
 <div dir="rtl">
@@ -1551,22 +1550,32 @@ sudo usermod -aG wheel backup     # CentOS/RHEL
 </div>
 
 ```bash
-# التبديل لمستخدم backup
-sudo su - backup
+# التبديل لمستخدم backupuser
+sudo su - backupuser
 
 # إنشاء زوج مفاتيح SSH (إذا لم يكن موجوداً)
 ssh-keygen -t ed25519 -C "backup@$(hostname)"
 # اضغط Enter ثلاث مرات لاستخدام الإعدادات الافتراضية
 
 # نسخ المفتاح العام للجهاز المستهدف
-ssh-copy-id backup@192.168.1.10
-# أدخل كلمة مرور مستخدم backup عند الطلب
+# استبدل TARGET_USER بالمستخدم على الجهاز المستهدف
+# استبدل TARGET_IP بعنوان IP الجهاز المستهدف
+ssh-copy-id TARGET_USER@TARGET_IP
+# مثال: ssh-copy-id m@192.168.100.17
 
 # اختبار الاتصال (يجب ألا يطلب كلمة مرور)
-ssh backup@192.168.1.10 "hostname && echo 'الاتصال ناجح!'"
+ssh TARGET_USER@TARGET_IP "hostname && echo 'الاتصال ناجح!'"
+
+# اختبار مفصّل (للتأكد من استخدام المفتاح الصحيح)
+ssh -i /home/backupuser/.ssh/id_ed25519 TARGET_USER@TARGET_IP -v
 ```
 
 <div dir="rtl">
+
+**ملاحظات مهمة:**
+- `TARGET_USER`: اسم المستخدم على الجهاز المستهدف (مثل: `m`, `admin`, `backupuser`)
+- `TARGET_IP`: عنوان IP الجهاز المستهدف (مثل: `192.168.100.17`)
+- تأكد من استبدال هذه القيم بقيمك الفعلية
 
 **طريقة بديلة يدوية (إذا فشل ssh-copy-id):**
 
@@ -1586,8 +1595,8 @@ cat ~/.ssh/id_ed25519.pub
 </div>
 
 ```bash
-# التبديل لمستخدم backup
-sudo su - backup
+# التبديل للمستخدم المستهدف
+su - TARGET_USER
 
 # إنشاء مجلد .ssh بالصلاحيات الصحيحة
 mkdir -p ~/.ssh
@@ -1649,7 +1658,9 @@ sudo systemctl restart sshd     # CentOS/RHEL
 </div>
 
 ```bash
-sudo ufw allow from 192.168.1.100 to any port 22 proto tcp
+# السماح بـ SSH من خادم النسخ الاحتياطي فقط
+# استبدل BACKUP_SERVER_IP بـ IP خادم النسخ الاحتياطي
+sudo ufw allow from BACKUP_SERVER_IP to any port 22 proto tcp
 sudo ufw enable
 sudo ufw status
 ```
@@ -1661,7 +1672,9 @@ sudo ufw status
 </div>
 
 ```bash
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.100" port protocol="tcp" port="22" accept'
+# السماح بـ SSH من خادم النسخ الاحتياطي فقط
+# استبدل BACKUP_SERVER_IP بـ IP خادم النسخ الاحتياطي
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="BACKUP_SERVER_IP" port protocol="tcp" port="22" accept'
 sudo firewall-cmd --reload
 sudo firewall-cmd --list-all
 ```
@@ -1676,9 +1689,10 @@ sudo firewall-cmd --list-all
 
 ```bash
 # اختبار الوصول للقراءة للمسارات المطلوب نسخها
-sudo -u backup ssh backup@192.168.1.10 "ls -lah /var/www"
-sudo -u backup ssh backup@192.168.1.10 "ls -lah /etc/nginx"
-sudo -u backup ssh backup@192.168.1.10 "ls -lah /home"
+# استبدل TARGET_USER و TARGET_IP بقيمك
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /var/www"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /etc/nginx"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /home"
 ```
 
 <div dir="rtl">
@@ -1690,8 +1704,8 @@ sudo -u backup ssh backup@192.168.1.10 "ls -lah /home"
 ```bash
 # على الجهاز المستهدف، اضبط الصلاحيات حسب الحاجة
 sudo chmod -R o+rX /var/www
-# أو أضف مستخدم backup للمجموعة المناسبة
-sudo usermod -aG www-data backup
+# أو أضف المستخدم للمجموعة المناسبة
+sudo usermod -aG www-data TARGET_USER
 ```
 
 <div dir="rtl">
@@ -1790,10 +1804,12 @@ New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (
 
 ```bash
 # من خادم النسخ الاحتياطي
-sudo -u backup ssh-copy-id اسم-مستخدم-windows@عنوان-ip-الجهاز
+# استبدل WSL_USER بالمستخدم في WSL
+# استبدل WINDOWS_IP بـ IP جهاز Windows
+sudo -u backupuser ssh-copy-id WSL_USER@WINDOWS_IP
 
 # اختبار الاتصال
-sudo -u backup ssh اسم-مستخدم-windows@عنوان-ip-الجهاز "uname -a"
+sudo -u backupuser ssh WSL_USER@WINDOWS_IP "uname -a"
 ```
 
 <div dir="rtl">
@@ -1804,7 +1820,7 @@ sudo -u backup ssh اسم-مستخدم-windows@عنوان-ip-الجهاز "uname
 
 ```bash
 # محرك C: في Windows موجود في المسار:
-ls -la /mnt/c/Users/اسمك/
+ls -la /mnt/c/Users/YourUsername/
 
 # محرك D: في Windows:
 ls -la /mnt/d/
@@ -1817,10 +1833,10 @@ ls -la /mnt/d/
 </div>
 
 ```
-/mnt/c/Users/اسمك/Documents
-/mnt/c/Users/اسمك/Desktop
+/mnt/c/Users/YourUsername/Documents
+/mnt/c/Users/YourUsername/Desktop
 /mnt/d/Projects
-/mnt/c/Users/اسمك/Pictures
+/mnt/c/Users/YourUsername/Pictures
 ```
 
 <div dir="rtl">
@@ -1899,37 +1915,26 @@ sudo systemsetup -getremotelogin
 - فعّل "Remote Login" (تسجيل الدخول عن بعد)
 - اختر المستخدمين الذين يمكنهم الوصول
 
-#### الخطوة 2: إنشاء مستخدم backup (اختياري)
+#### الخطوة 2: إعداد مفتاح SSH
 
-**عبر الواجهة الرسومية:**
-- System Preferences → Users & Groups
-- انقر على أيقونة القفل، أدخل كلمة مرور المسؤول
-- انقر على '+' لإضافة مستخدم
-- أنشئ مستخدم باسم "backup"
-
-**عبر سطر الأوامر:**
+من خادم النسخ الاحتياطي:
 
 </div>
 
 ```bash
-sudo dscl . -create /Users/backup
-sudo dscl . -create /Users/backup UserShell /bin/bash
-sudo dscl . -create /Users/backup RealName "Backup User"
-sudo dscl . -create /Users/backup UniqueID 503
-sudo dscl . -create /Users/backup PrimaryGroupID 80
-sudo dscl . -create /Users/backup NFSHomeDirectory /Users/backup
-sudo dscl . -passwd /Users/backup كلمة_المرور_هنا
-sudo dscl . -append /Groups/admin GroupMembership backup
+# نسخ المفتاح للمستخدم على macOS
+# استبدل MAC_USER و MAC_IP بقيمك
+sudo -u backupuser ssh-copy-id MAC_USER@MAC_IP
 ```
 
 <div dir="rtl">
 
-#### الخطوة 3: إعداد مفتاح SSH
+أو يدوياً على جهاز macOS:
 
 </div>
 
 ```bash
-# كمستخدم backup
+# كمستخدم على macOS
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
@@ -1942,7 +1947,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 <div dir="rtl">
 
-#### الخطوة 4: إعداد جدار الحماية
+#### الخطوة 3: إعداد جدار الحماية
 
 </div>
 
@@ -1954,13 +1959,14 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/sbin/sshd
 
 <div dir="rtl">
 
-#### الخطوة 5: الاختبار من خادم النسخ الاحتياطي
+#### الخطوة 4: الاختبار من خادم النسخ الاحتياطي
 
 </div>
 
 ```bash
-sudo -u backup ssh backup@عنوان-mac "sw_vers"
-sudo -u backup ssh backup@عنوان-mac "ls -la /Users"
+# استبدل MAC_USER و MAC_IP بقيمك
+sudo -u backupuser ssh MAC_USER@MAC_IP "sw_vers"
+sudo -u backupuser ssh MAC_USER@MAC_IP "ls -la /Users"
 ```
 
 <div dir="rtl">
@@ -1974,8 +1980,8 @@ sudo -u backup ssh backup@عنوان-mac "ls -la /Users"
 - ✅ **مصادقة مفتاح SSH معدّة وتعمل بشكل صحيح**
 - ✅ **مصادقة كلمة المرور معطّلة** (موصى به بشدة)
 - ✅ **جدار الحماية يسمح بـ SSH فقط من IP خادم النسخ الاحتياطي**
-- ✅ **مستخدم backup موجود على الجهاز المستهدف**
-- ✅ **مستخدم backup لديه صلاحية قراءة للمسارات المطلوب نسخها**
+- ✅ **المستخدم المستهدف موجود على الجهاز**
+- ✅ **المستخدم لديه صلاحية قراءة للمسارات المطلوب نسخها**
 - ✅ **اتصال SSH يعمل بدون طلب كلمة مرور**
 - ✅ **الجهاز المستهدف على شبكة آمنة وموثوقة**
 - ✅ **بصمة مفتاح مضيف SSH تم التحقق منها** (عند الاتصال الأول)
@@ -1988,35 +1994,57 @@ sudo -u backup ssh backup@عنوان-mac "ls -la /Users"
 
 نفّذ هذه الاختبارات من خادم النسخ الاحتياطي:
 
+**تذكّر:** استبدل `TARGET_USER` و `TARGET_IP` بقيمك الفعلية
+
 </div>
 
 ```bash
 # 1. الاتصال الأساسي بالشبكة
-ping -c 4 192.168.1.10
+ping -c 4 TARGET_IP
 
 # 2. التحقق من أن منفذ SSH مفتوح
-nc -zv 192.168.1.10 22
+nc -zv TARGET_IP 22
 
 # 3. اتصال SSH بدون كلمة مرور
-sudo -u backup ssh backup@192.168.1.10 "echo SSH يعمل بنجاح"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "echo SSH يعمل بنجاح"
 
 # 4. التحقق من اسم المضيف
-sudo -u backup ssh backup@192.168.1.10 "hostname"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "hostname"
 
 # 5. اختبار rsync
-sudo -u backup rsync -avz --dry-run backup@192.168.1.10:/tmp/ /tmp/test/
+sudo -u backupuser rsync -avz --dry-run TARGET_USER@TARGET_IP:/tmp/ /tmp/test/
 
 # 6. التحقق من الوصول للمسارات
-sudo -u backup ssh backup@192.168.1.10 "ls -la /var/www"
-sudo -u backup ssh backup@192.168.1.10 "ls -la /etc/nginx"
-sudo -u backup ssh backup@192.168.1.10 "ls -la /home"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /var/www"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /etc/nginx"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "ls -lah /home"
 
 # 7. فحص المساحة المتاحة على الجهاز المستهدف
-sudo -u backup ssh backup@192.168.1.10 "df -h"
+sudo -u backupuser ssh TARGET_USER@TARGET_IP "df -h"
 
 # 8. التحقق من عدم طلب كلمة مرور
 # يجب أن يكتمل فوراً بدون طلب أي شيء
-sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
+sudo -u backupuser ssh -o BatchMode=yes TARGET_USER@TARGET_IP "date"
+
+# 9. اختبار مع تفاصيل (debugging)
+ssh -i /home/backupuser/.ssh/id_ed25519 TARGET_USER@TARGET_IP -v
+```
+
+<div dir="rtl">
+
+**أمثلة عملية:**
+
+</div>
+
+```bash
+# مثال 1: نسخ من جهاز Linux
+sudo -u backupuser ssh m@192.168.100.17 "ls -lah /home/m"
+
+# مثال 2: نسخ من جهاز Windows (WSL)
+sudo -u backupuser ssh wsluser@192.168.100.20 "ls -lah /mnt/c/Users"
+
+# مثال 3: نسخ من جهاز macOS
+sudo -u backupuser ssh macuser@192.168.100.30 "ls -lah /Users"
 ```
 
 <div dir="rtl">
@@ -2044,51 +2072,19 @@ sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
 ```bash
 # 1. استنساخ المستودع
 git clone https://github.com/61Maz19/linux-backup-manager.git
-cd linux-backup-manager/scripts
+cd linux-backup-manager
 
 # 2. تثبيت جميع المتطلبات
-sudo ./install_tools.sh
+sudo ./scripts/install_tools.sh
 
 # 3. إنشاء هيكل المجلدات
-sudo ./setup_folders.sh
-
+sudo ./scripts/setup_folders.sh
 
 # 4. إعداد جدار الحماية (اختياري لكن موصى به)
-sudo ./setup_firewall.sh
+sudo ./scripts/setup_firewall.sh
 
 # 5. إعداد المراقبة (اختياري)
-sudo ./setup_monitoring.sh --basic
-```
-
-<div dir="rtl">
-
-### التثبيت اليدوي
-
-</div>
-
-```bash
-# تثبيت الحزم المطلوبة
-sudo apt update
-sudo apt install -y rsync openssh-client openssh-server cron wget curl \
-                     mailutils msmtp msmtp-mta net-tools tree gzip pigz gpg
-
-# لميزات الأمان
-sudo apt install -y clamav clamav-daemon fail2ban ufw
-
-# إنشاء هيكل المجلدات
-sudo mkdir -p /backup/{config,devices,logs,scripts,quarantine}
-sudo chmod -R 750 /backup
-
-# إنشاء مستخدم backup
-sudo useradd -m -s /bin/bash backup
-sudo chown -R backup:backup /backup
-
-# نسخ السكريبتات
-sudo cp -r scripts/* /backup/scripts/
-sudo chmod +x /backup/scripts/*.sh
-
-# نسخ قوالب الإعدادات
-sudo cp config/*.example /backup/config/
+sudo ./scripts/setup_monitoring.sh --basic
 ```
 
 <div dir="rtl">
@@ -2119,10 +2115,10 @@ sudo nano /backup/config/backup_config.conf
 
 ```bash
 # المستخدم المسؤول عن النسخ الاحتياطي
-BACKUP_USER="backup"
+BACKUP_USER="backupuser"
 
 # موقع مفتاح SSH
-SSH_KEY="/home/backup/.ssh/id_ed25519"
+SSH_KEY="/home/backupuser/.ssh/id_ed25519"
 
 # سياسة الاحتفاظ (عدّلها حسب احتياجاتك)
 RETENTION_DAILY=7        # الاحتفاظ بالنسخ اليومية لمدة 7 أيام
@@ -2176,10 +2172,10 @@ sudo ./scripts/discover_devices.sh --add
 </div>
 
 ```
-Enter device IP address: 192.168.1.10
-Enter device hostname: webserver
-Enter SSH username [root]: backup
-Enter paths to backup [/home /etc]: /var/www /etc/nginx /var/log
+Enter device IP address: 192.168.100.17
+Enter device hostname: my-pc
+Enter SSH username: m
+Enter paths to backup: /home/m /var/www
 ```
 
 <div dir="rtl">
@@ -2204,10 +2200,10 @@ sudo nano /backup/config/discovered_devices.txt
 
 ```
 # الصيغة: عنوان_IP  اسم_الجهاز  مستخدم_SSH  مسار1  مسار2  مسار3
-192.168.1.10  webserver   backup  /var/www  /etc/nginx
-192.168.1.20  database    backup  /var/lib/mysql  /etc/mysql
-192.168.1.30  fileserver  backup  /home  /srv/shares
-10.0.0.50     devserver   backup  /home/developer/projects
+192.168.100.17  my-pc       m       /home/m  /var/www
+192.168.100.20  webserver   admin   /var/www  /etc/nginx
+192.168.100.30  database    dbuser  /var/lib/mysql  /etc/mysql
+10.0.0.50       fileserver  root    /home  /srv/shares
 ```
 
 <div dir="rtl">
@@ -2218,109 +2214,6 @@ sudo nano /backup/config/discovered_devices.txt
 
 ```bash
 sudo ./scripts/discover_devices.sh --init
-```
-
-<div dir="rtl">
-
-### الخطوة 3: إعداد الاستثناءات
-
-</div>
-
-```bash
-# نسخ الملف النموذجي
-sudo cp config/exclude.list.example /backup/config/exclude.list
-
-# تحرير الاستثناءات
-sudo nano /backup/config/exclude.list
-```
-
-<div dir="rtl">
-
-استثناءات شائعة:
-
-</div>
-
-```
-# الملفات المؤقتة
-*.tmp
-*.temp
-*.cache
-*~
-
-# مجلدات النظام
-/proc/
-/sys/
-/dev/
-
-# ملفات السجلات
-*.log.*
-*.log.gz
-
-# التطوير
-node_modules/
-.git/
-__pycache__/
-```
-
-<div dir="rtl">
-
-### الخطوة 4: إعداد التنبيهات عبر البريد الإلكتروني (اختياري)
-
-**باستخدام msmtp (موصى به لـ Gmail):**
-
-</div>
-
-```bash
-# تحرير إعدادات msmtp
-sudo nano /etc/msmtprc
-```
-
-<div dir="rtl">
-
-لـ Gmail:
-
-</div>
-
-```
-defaults
-auth           on
-tls            on
-tls_starttls   on
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
-logfile        /var/log/msmtp.log
-
-account default
-host           smtp.gmail.com
-port           587
-from           your-email@gmail.com
-user           your-email@gmail.com
-password       your-app-password-here
-```
-
-<div dir="rtl">
-
-**الحصول على كلمة مرور تطبيق Gmail:**
-1. اذهب إلى: https://myaccount.google.com/apppasswords
-2. أنشئ كلمة مرور تطبيق جديدة
-3. استخدمها في إعدادات msmtp
-
-**تأمين الملف:**
-
-</div>
-
-```bash
-sudo chmod 600 /etc/msmtprc
-sudo chown root:root /etc/msmtprc
-```
-
-<div dir="rtl">
-
-**اختبار البريد الإلكتروني:**
-
-</div>
-
-```bash
-echo "رسالة اختبار من نظام النسخ الاحتياطي" | sudo ./scripts/alert.sh "تنبيه اختباري"
 ```
 
 <div dir="rtl">
@@ -2347,12 +2240,6 @@ sudo ./scripts/backup_manager.sh --verbose
 
 # اختبار مع إخراج مفصّل
 sudo ./scripts/backup_manager.sh --test --verbose
-
-# ملف إعدادات مخصص
-sudo ./scripts/backup_manager.sh --config /path/to/custom.conf
-
-# المساعدة
-./scripts/backup_manager.sh --help
 ```
 
 <div dir="rtl">
@@ -2369,13 +2256,10 @@ sudo ./scripts/discover_devices.sh --add
 sudo ./scripts/discover_devices.sh --list
 
 # إزالة جهاز
-sudo ./scripts/discover_devices.sh --remove 192.168.1.10
+sudo ./scripts/discover_devices.sh --remove 192.168.100.17
 
-# إنشاء المجلدات لجميع الأجهزة في الإعدادات
+# إنشاء المجلدات لجميع الأجهزة
 sudo ./scripts/discover_devices.sh --init
-
-# المساعدة
-./scripts/discover_devices.sh --help
 ```
 
 <div dir="rtl">
@@ -2405,38 +2289,6 @@ sudo ./scripts/setup_cron.sh --list
 
 # إزالة جميع مهام النسخ الاحتياطي
 sudo ./scripts/setup_cron.sh --remove
-
-# المساعدة
-./scripts/setup_cron.sh --help
-```
-
-<div dir="rtl">
-
-**صيغة جدول cron:**
-
-</div>
-
-```
-* * * * *
-│ │ │ │ │
-│ │ │ │ └─ يوم الأسبوع (0-7، 0 و 7 = الأحد)
-│ │ │ └─── الشهر (1-12)
-│ │ └───── يوم الشهر (1-31)
-│ └─────── الساعة (0-23)
-└───────── الدقيقة (0-59)
-```
-
-<div dir="rtl">
-
-أمثلة:
-
-</div>
-
-```
-0 2 * * *      # كل يوم الساعة 2:00 صباحاً
-0 */6 * * *    # كل 6 ساعات
-0 0 * * 0      # كل أحد عند منتصف الليل
-0 3 1 * *      # أول يوم من كل شهر الساعة 3 صباحاً
 ```
 
 <div dir="rtl">
@@ -2452,50 +2304,12 @@ sudo /backup/scripts/backup_status.sh
 # عرض سجلات النسخ الأخيرة
 tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
 
-# عرض جميع سجلات اليوم
-cat /backup/logs/run_$(date +%Y-%m-%d)*.log
-
-# فحص سجل جهاز محدد
-cat /backup/devices/192.168.1.10/logs/backup_$(date +%Y-%m-%d)*.log
-
 # فحص استخدام المساحة
 df -h /backup
 du -sh /backup/devices/*
 
 # عرض النسخ الأخيرة (آخر 24 ساعة)
 find /backup/devices -name "backup_*" -mtime -1 -type d
-
-# عدد إجمالي النسخ الاحتياطية
-find /backup/devices -name "backup_*" -type d | wc -l
-
-# فحص أحجام النسخ
-du -sh /backup/devices/*/current
-```
-
-<div dir="rtl">
-
-### التنبيهات
-
-</div>
-
-```bash
-# إرسال تنبيه اختباري
-echo "رسالة اختبارية" | sudo ./scripts/alert.sh "موضوع الاختبار"
-
-# إرسال تنبيه نجاح
-sudo ./scripts/alert.sh -t success "اكتمل النسخ الاحتياطي" "جميع الأنظمة تم نسخها بنجاح"
-
-# إرسال تنبيه خطأ
-sudo ./scripts/alert.sh -t error "فشل النسخ الاحتياطي" "الخادم01 غير متاح"
-
-# إرسال تحذير
-sudo ./scripts/alert.sh -t warning "مساحة القرص منخفضة" "تبقى 10GB فقط"
-
-# إرسال بريد HTML
-echo "<h1>تقرير</h1><p>جميع الأنظمة تعمل</p>" | sudo ./scripts/alert.sh --html "التقرير اليومي"
-
-# المساعدة
-./scripts/alert.sh --help
 ```
 
 <div dir="rtl">
@@ -2511,89 +2325,26 @@ echo "<h1>تقرير</h1><p>جميع الأنظمة تعمل</p>" | sudo ./scrip
 ```
 /backup/
 ├── devices/                          # جميع نسخ الأجهزة
-│   ├── 192.168.1.10/                # جهاز حسب عنوان IP
+│   ├── 192.168.100.17/              # جهاز حسب عنوان IP
 │   │   ├── current/                 # أحدث نسخة تزايدية
-│   │   │   ├── var_www/            # المسارات المنسوخة
-│   │   │   └── etc_nginx/
 │   │   ├── history/                 # النسخ التاريخية (GFS)
 │   │   │   ├── daily/              # آخر 7 أيام
-│   │   │   │   ├── backup_2025-11-01_020000/
-│   │   │   │   └── backup_2025-11-02_020000/
 │   │   │   ├── weekly/             # آخر 4 أسابيع
-│   │   │   │   └── backup_2025-10-27_020000/
 │   │   │   └── monthly/            # آخر 12 شهر
-│   │   │       └── backup_2025-10-01_020000/
 │   │   ├── logs/                    # سجلات خاصة بالجهاز
-│   │   │   └── backup_2025-11-02_020000.log
-│   │   ├── deleted/                 # أرشيف الملفات المحذوفة
-│   │   └── device_info.txt         # معلومات الجهاز
+│   │   └── deleted/                 # أرشيف الملفات المحذوفة
 │   │
-│   └── 192.168.1.20/               # جهاز آخر
-│       └── ...
-│
 ├── config/                          # ملفات الإعدادات
 │   ├── backup_config.conf          # الإعدادات الرئيسية
 │   ├── discovered_devices.txt      # قائمة الأجهزة
 │   └── exclude.list                # أنماط الاستثناء
 │
 ├── scripts/                         # جميع السكريبتات
-│   ├── backup_manager.sh           # محرك النسخ الرئيسي
-│   ├── discover_devices.sh         # إدارة الأجهزة
-│   ├── alert.sh                    # نظام التنبيهات
-│   ├── install_tools.sh            # مثبت المتطلبات
-│   ├── setup_cron.sh               # الجدولة
-│   ├── setup_firewall.sh           # إعداد الجدار الناري
-│   ├── setup_folders.sh            # منشئ المجلدات
-│   ├── setup_monitoring.sh         # إعداد المراقبة
-│   └── backup_status.sh            # فاحص الحالة
-│
 ├── logs/                            # السجلات العامة
-│   ├── run_2025-11-02_020000.log   # سجلات التشغيل الرئيسية
-│   ├── device_management.log        # عمليات الأجهزة
-│   ├── alerts.log                   # التنبيهات المرسلة
-│   └── cron.log                     # سجلات تنفيذ cron
-│
-└── quarantine/                      # الملفات المشبوهة (ClamAV)
-    └── infected_file_20251102.txt
+└── quarantine/                      # الملفات المشبوهة
 ```
 
 <div dir="rtl">
-
-### شرح دوران النسخ الاحتياطي
-
-</div>
-
-```
-النسخة الحالية (تزايدية):
-/backup/devices/192.168.1.10/current/
-
-الدوران اليومي (7 أيام):
-اليوم 1: backup_2025-11-02_020000  ← الأحدث
-اليوم 2: backup_2025-11-01_020000
-اليوم 3: backup_2025-10-31_020000
-...
-اليوم 7: backup_2025-10-27_020000  ← الأقدم يومياً، يتحول لأسبوعي
-
-الدوران الأسبوعي (4 أسابيع):
-الأسبوع 1: backup_2025-10-27_020000  ← مُرقّى من يومي
-الأسبوع 2: backup_2025-10-20_020000
-الأسبوع 3: backup_2025-10-13_020000
-الأسبوع 4: backup_2025-10-06_020000  ← الأقدم أسبوعياً، يتحول لشهري
-
-الدوران الشهري (12 شهر):
-الشهر 1:  backup_2025-10-01_020000  ← مُرقّى من أسبوعي
-الشهر 2:  backup_2025-09-01_020000
-...
-الشهر 12: backup_2025-01-01_020000  ← يُحذف بعد 12 شهر
-```
-
-<div dir="rtl">
-
-**مثال على توفير المساحة:**
-- نسخة كاملة أصلية: 100GB
-- مع الروابط الصلبة: 10GB يومي، 15GB أسبوعي، 20GB شهري
-- المجموع لـ 7 يومي + 4 أسبوعي + 12 شهري: ~370GB بدلاً من 2,300GB
-- **التوفير: ~84%**
 
 ---
 
@@ -2601,7 +2352,7 @@ echo "<h1>تقرير</h1><p>جميع الأنظمة تعمل</p>" | sudo ./scrip
 
 ## 📊 المراقبة
 
-### فحص الحالة المدمج
+### فحص الحالة
 
 </div>
 
@@ -2612,63 +2363,6 @@ sudo /backup/scripts/backup_status.sh
 
 <div dir="rtl">
 
-الإخراج:
-
-</div>
-
-```
-╔═══════════════════════════════════════════════════════╗
-║         حالة نظام النسخ الاحتياطي                    ║
-╚═══════════════════════════════════════════════════════╝
-
-=== آخر 5 عمليات تشغيل ===
-run_2025-11-02_020000.log
-run_2025-11-01_020000.log
-run_2025-10-31_020000.log
-run_2025-10-30_020000.log
-run_2025-10-29_020000.log
-
-=== استخدام القرص ===
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1       500G  234G  266G  47% /backup
-
-=== النسخ الأخيرة (آخر 24 ساعة) ===
-/backup/devices/192.168.1.10/history/daily/backup_2025-11-02_020000
-/backup/devices/192.168.1.20/history/daily/backup_2025-11-02_020000
-
-=== عدد الأجهزة ===
-إجمالي الأجهزة: 4
-
-=== معلومات النظام ===
-اسم المضيف: backup-server
-التاريخ: السبت 2 نوفمبر 09:45:41 UTC 2025
-وقت التشغيل: 45 يوم
-```
-
-<div dir="rtl">
-
-### Prometheus و Grafana
-
-</div>
-
-```bash
-# تثبيت مجموعة المراقبة
-sudo ./scripts/setup_monitoring.sh --full
-
-# الوصول للوحات التحكم
-# Prometheus: http://عنوان-الخادم:9090
-# Grafana:    http://عنوان-الخادم:3000 (admin/admin)
-```
-
-<div dir="rtl">
-
-**المقاييس المتاحة:**
-- معدل نجاح/فشل النسخ الاحتياطي
-- مدة النسخ الاحتياطي
-- اتجاهات استخدام المساحة
-- سرعات نقل الشبكة
-- استخدام موارد النظام
-
 ---
 
 <a name="حل-المشكلات-ar"></a>
@@ -2677,224 +2371,34 @@ sudo ./scripts/setup_monitoring.sh --full
 
 ### 1. فشل اتصال SSH
 
-**الأعراض:**
-
-</div>
-
-```
-ERROR: SSH connection failed to 192.168.1.10
-```
-
-<div dir="rtl">
-
-**الحلول:**
+**الحل:**
 
 </div>
 
 ```bash
 # اختبار اتصال SSH يدوياً
-sudo -u backup ssh backup@192.168.1.10
+sudo -u backupuser ssh TARGET_USER@TARGET_IP
 
 # التحقق من وجود مفتاح SSH
-ls -la /home/backup/.ssh/
+ls -la /home/backupuser/.ssh/
 
-# إعادة إنشاء مفتاح SSH إذا لزم الأمر
-sudo -u backup ssh-keygen -t ed25519
-
-# نسخ المفتاح مرة أخرى
-sudo -u backup ssh-copy-id backup@192.168.1.10
-
-# فحص إعدادات SSH على الجهاز المستهدف
-# تأكد من: PubkeyAuthentication yes, PasswordAuthentication no
-
-# التحقق من صلاحيات المفتاح
-sudo -u backup chmod 700 /home/backup/.ssh
-sudo -u backup chmod 600 /home/backup/.ssh/id_ed25519
-sudo -u backup chmod 644 /home/backup/.ssh/id_ed25519.pub
+# إعادة نسخ المفتاح
+sudo -u backupuser ssh-copy-id TARGET_USER@TARGET_IP
 ```
 
 <div dir="rtl">
 
-### 2. رفض الصلاحيات على الجهاز المستهدف
+### 2. رفض الصلاحيات
 
-**الأعراض:**
-
-</div>
-
-```
-ERROR: Permission denied accessing /var/www
-```
-
-<div dir="rtl">
-
-**الحلول:**
+**الحل:**
 
 </div>
 
 ```bash
-# على الجهاز المستهدف، فحص صلاحيات المسار
-ls -la /var/www
-
-# إضافة مستخدم backup للمجموعة المناسبة
-sudo usermod -aG www-data backup
-
-# أو جعل المسار قابل للقراءة من الجميع
+# على الجهاز المستهدف، اضبط الصلاحيات
 sudo chmod -R o+rX /var/www
-
-# التحقق من الوصول من خادم النسخ الاحتياطي
-sudo -u backup ssh backup@192.168.1.10 "ls -la /var/www"
-```
-
-<div dir="rtl">
-
-### 3. امتلاء مساحة القرص
-
-**الأعراض:**
-
-</div>
-
-```
-ERROR: No space left on device
-```
-
-<div dir="rtl">
-
-**الحلول:**
-
-</div>
-
-```bash
-# فحص استخدام القرص
-df -h /backup
-du -sh /backup/devices/*
-
-# إيجاد أكبر النسخ الاحتياطية
-du -sh /backup/devices/*/history/*/* | sort -h | tail -20
-
-# تنظيف النسخ القديمة يدوياً
-sudo find /backup/devices -name "backup_*" -mtime +60 -delete
-
-# تعديل سياسة الاحتفاظ
-sudo nano /backup/config/backup_config.conf
-# قلل قيم RETENTION_*
-
-# تشغيل التنظيف اليدوي
-sudo /backup/scripts/backup_manager.sh --cleanup
-```
-
-<div dir="rtl">
-
-### 4. النسخ الاحتياطي يأخذ وقتاً طويلاً
-
-**الحلول:**
-
-</div>
-
-```bash
-# تحرير الإعدادات
-sudo nano /backup/config/backup_config.conf
-
-# زيادة المهام المتوازية
-MAX_PARALLEL_JOBS=4
-
-# زيادة الضغط (يتاجر بالمعالج مقابل السرعة)
-COMPRESSION_LEVEL=3
-
-# إضافة المزيد من الاستثناءات
-sudo nano /backup/config/exclude.list
-
-# فحص سرعة الشبكة
-sudo -u backup rsync -avz --stats backup@192.168.1.10:/tmp/ /tmp/test/
-```
-
-<div dir="rtl">
-
-### 5. التنبيهات عبر البريد لا تعمل
-
-**اختبار msmtp:**
-
-</div>
-
-```bash
-# فحص إعدادات msmtp
-sudo cat /etc/msmtprc
-
-# اختبار msmtp مباشرة
-echo "اختبار" | msmtp -a default your-email@gmail.com
-
-# فحص سجل msmtp
-sudo tail -f /var/log/msmtp.log
-
-# التحقق من إعدادات البريد
-sudo nano /backup/config/backup_config.conf
-# تحقق من: ENABLE_ALERTS, ALERT_EMAIL, MSMTP_ACCOUNT
-```
-
-<div dir="rtl">
-
-### 6. أخطاء ClamAV
-
-</div>
-
-```bash
-# تحديث قاعدة بيانات الفيروسات
-sudo freshclam
-
-# فحص حالة ClamAV
-sudo systemctl status clamav-daemon
-sudo systemctl status clamav-freshclam
-
-# إعادة تشغيل الخدمات
-sudo systemctl restart clamav-daemon
-sudo systemctl restart clamav-freshclam
-
-# فحص السجلات
-sudo tail -f /var/log/clamav/freshclam.log
-```
-
-<div dir="rtl">
-
-### 7. مهمة Cron لا تعمل
-
-</div>
-
-```bash
-# التحقق من تثبيت وتشغيل cron
-sudo systemctl status cron
-
-# عرض مهام cron الحالية
-sudo ./scripts/setup_cron.sh --list
-
-# فحص سجلات cron
-sudo grep CRON /var/log/syslog | tail -20
-
-# اختبار سكريبت النسخ يدوياً
-sudo -u backup /backup/scripts/backup_manager.sh --test --verbose
-
-# إعادة تثبيت مهام cron
-sudo ./scripts/setup_cron.sh --remove
-sudo ./scripts/setup_cron.sh --daily
-```
-
-<div dir="rtl">
-
----
-
-### وضع التصحيح (Debug)
-
-تفعيل السجلات التفصيلية:
-
-</div>
-
-```bash
-# التشغيل مع أقصى مستوى من التفاصيل
-sudo bash -x /backup/scripts/backup_manager.sh --verbose 2>&1 | tee debug.log
-
-# فحص جميع السجلات
-sudo tail -f /backup/logs/*.log
-
-# فحص سجلات الأجهزة
-sudo tail -f /backup/devices/*/logs/*.log
+# أو
+sudo usermod -aG www-data TARGET_USER
 ```
 
 <div dir="rtl">
@@ -2905,94 +2409,10 @@ sudo tail -f /backup/devices/*/logs/*.log
 
 ## 🤝 المساهمة في المشروع
 
-المساهمات مرحب بها ونُقدّرها!
-
-### كيفية المساهمة
-
-**1. انسخ المستودع (Fork)**
-
-</div>
-
-```bash
-# انقر على "Fork" في GitHub
-```
-
-<div dir="rtl">
-
-**2. استنسخ نسختك**
-
-</div>
-
-```bash
-git clone https://github.com/YOUR_USERNAME/linux-backup-manager.git
-cd linux-backup-manager
-```
-
-<div dir="rtl">
-
-**3. أنشئ فرع للميزة**
-
-</div>
-
-```bash
-git checkout -b feature/amazing-feature
-```
-
-<div dir="rtl">
-
-**4. اعمل تغييراتك**
-   - اكتب كود نظيف وموثّق
-   - اتبع أسلوب الكود الموجود
-   - اختبر بشكل شامل
-
-**5. قم بعمل Commit للتغييرات**
-
-</div>
-
-```bash
-git add .
-git commit -m "feat: إضافة ميزة رائعة
-
-- وصف تفصيلي للتغييرات
-- لماذا هذا التغيير مطلوب
-- أي تغييرات قد تكسر التوافق"
-```
-
-<div dir="rtl">
-
-**6. ارفع لنسختك**
-
-</div>
-
-```bash
-git push origin feature/amazing-feature
-```
-
-<div dir="rtl">
-
-**7. افتح Pull Request**
-   - اذهب للمستودع الأصلي
-   - انقر "New Pull Request"
-   - قدّم وصف واضح للتغييرات
-
-### إرشادات المساهمة
-
-- ✅ اكتب رسائل commit واضحة
-- ✅ اختبر على توزيعات Linux متعددة
-- ✅ حدّث الوثائق
-- ✅ اتبع أفضل ممارسات bash
-- ✅ أضف تعليقات للمنطق المعقّد
-- ✅ أبقِ الدوال صغيرة ومركّزة
-
-### مجالات المساهمة
-
-- 🐛 إصلاح الأخطاء
-- ✨ ميزات جديدة
-- 📝 تحسينات الوثائق
-- 🌍 الترجمات
-- 🧪 تغطية الاختبارات
-- 🎨 تحسينات واجهة المستخدم للإخراج
-- 📊 قوالب لوحات المراقبة
+المساهمات مرحب بها! لا تتردد في:
+- 🐛 الإبلاغ عن الأخطاء
+- ✨ اقتراح ميزات جديدة
+- 🔧 إرسال Pull Requests
 
 ---
 
@@ -3001,34 +2421,6 @@ git push origin feature/amazing-feature
 ## 📜 الترخيص
 
 هذا المشروع مرخص بموجب **ترخيص MIT**.
-
-</div>
-
-```
-ترخيص MIT
-
-حقوق النشر (c) 2025 61Maz19
-
-يُمنح الإذن مجاناً لأي شخص يحصل على نسخة من هذا البرنامج
-والملفات الوثائقية المرتبطة ("البرنامج")، للتعامل مع البرنامج
-بدون قيود، بما في ذلك على سبيل المثال لا الحصر حقوق الاستخدام
-والنسخ والتعديل والدمج والنشر والتوزيع والترخيص من الباطن
-و/أو بيع نسخ من البرنامج، والسماح للأشخاص الذين يُزوَّد لهم
-البرنامج بذلك، وفقاً للشروط التالية:
-
-يجب تضمين إشعار حقوق النشر أعلاه وهذا إشعار الإذن في جميع
-النسخ أو الأجزاء الجوهرية من البرنامج.
-
-يُقدَّم البرنامج "كما هو"، دون ضمان من أي نوع، صريح أو ضمني،
-بما في ذلك على سبيل المثال لا الحصر ضمانات القابلية للتسويق
-والملاءمة لغرض معين وعدم الانتهاك. في أي حال من الأحوال لن
-يكون المؤلفون أو أصحاب حقوق النشر مسؤولين عن أي مطالبة أو
-أضرار أو مسؤولية أخرى، سواء في دعوى عقد أو ضرر أو غير ذلك،
-الناشئة عن أو فيما يتعلق بالبرنامج أو الاستخدام أو المعاملات
-الأخرى في البرنامج.
-```
-
-<div dir="rtl">
 
 راجع ملف [LICENSE](LICENSE) للتفاصيل الكاملة.
 
@@ -3046,109 +2438,59 @@ git push origin feature/amazing-feature
 
 ## ⭐ دعم المشروع
 
-<div dir="rtl">
-
 إذا وجدت هذا المشروع مفيداً:
 
 - ⭐ ضع نجمة للمستودع على GitHub
 - 🐛 أبلغ عن الأخطاء والمشكلات
 - 💡 اقترح ميزات جديدة
 - 🤝 ساهم بتحسينات الكود
-- 📢 شارك المشروع مع الآخرين الذين قد يستفيدون منه
+- 📢 شارك المشروع مع الآخرين
 
 ---
 
 ## 📝 سجل التغييرات
 
-### الإصدار 3.0.0 (2025-11-02)
+### الإصدار 3.0.0 (2025-11-04)
 
 **إصدار رئيسي - إعادة كتابة كاملة**
 
 #### ✨ ميزات جديدة
-- تطبيق استراتيجية دوران GFS (الجد-الأب-الابن)
-- نظام إشعارات بريد إلكتروني متعدد الطرق (msmtp, mail, sendmail)
-- واجهة سطر أوامر شاملة لإدارة الأجهزة
-- جدولة تلقائية عبر cron مع خيارات مرنة
-- أتمتة إعداد جدار الحماية (UFW/firewalld)
-- تكامل مع Prometheus و Grafana للمراقبة
-- نظام سجلات احترافي (لكل جهاز وعلى مستوى النظام)
-- وضع اختبار (dry-run) للاختبار الآمن
+- تطبيق استراتيجية دوران GFS
+- نظام إشعارات متعدد الطرق
+- إدارة شاملة للأجهزة
+- جدولة تلقائية مرنة
+- تكامل أمني كامل
 
 #### 🔐 تحسينات الأمان
-- تكامل مع مضاد الفيروسات ClamAV
-- إعداد حماية fail2ban
-- فرض المصادقة بمفاتيح SSH
-- نظام حجر صحي للملفات المشبوهة
-- دعم تشفير GPG (اختياري)
-- صلاحيات ملفات آمنة (750/640/600)
+- تكامل ClamAV
+- حماية fail2ban
+- مفاتيح SSH فقط
+- نظام حجر صحي
 
 #### ⚡ تحسينات الأداء
-- روابط صلبة للملفات غير المتغيرة (توفير 90٪ من المساحة)
-- دعم المهام المتوازية
-- SSH keep-alive للنقل الطويل
-- خيارات تحديد عرض النطاق
-- معاملات rsync محسّنة
-
-#### 📚 التوثيق
-- README شامل (إنجليزي + عربي)
-- أدلة إعداد الأجهزة المستهدفة (Linux, Windows, macOS)
-- قوالب إعدادات مع أمثلة
-- قسم حل المشكلات
-- إرشادات المساهمة
-
-#### 🛠️ السكريبتات المتضمنة
-1. `backup_manager.sh` - محرك النسخ الاحتياطي الرئيسي
-2. `discover_devices.sh` - إدارة الأجهزة
-3. `alert.sh` - نظام الإشعارات
-4. `install_tools.sh` - مثبت المتطلبات
-5. `setup_cron.sh` - الجدولة التلقائية
-6. `setup_firewall.sh` - إعداد جدار الحماية
-7. `setup_folders.sh` - منشئ هيكل المجلدات
-8. `setup_monitoring.sh` - إعداد المراقبة
-
-#### 🌍 دعم المنصات
-- Ubuntu 20.04+ / Debian 10+
-- CentOS 8+ / RHEL 8+ / Rocky Linux / AlmaLinux
-- Windows (عبر WSL2)
-- macOS (عبر SSH المدمج)
+- روابط صلبة (توفير 90٪)
+- مهام متوازية
+- SSH keep-alive
 
 ---
 
 ## 📚 موارد إضافية
 
-<div dir="rtl">
-
-### الوثائق
-- [دليل التثبيت](docs/installation.md) *(قريباً)*
-- [مرجع الإعدادات](docs/configuration.md) *(قريباً)*
-- [توثيق API](docs/api.md) *(قريباً)*
-
-### مشاريع ذات صلة
-- [rsync](https://rsync.samba.org/) - أداة مزامنة الملفات
-- [ClamAV](https://www.clamav.net/) - محرك مكافحة الفيروسات
-- [Prometheus](https://prometheus.io/) - نظام المراقبة
-- [Grafana](https://grafana.com/) - منصة التحليلات
-
 ### المجتمع
-- [GitHub Issues](https://github.com/61Maz19/linux-backup-manager/issues) - تقارير الأخطاء وطلبات الميزات
-- [GitHub Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) - الدعم المجتمعي
+- [GitHub Issues](https://github.com/61Maz19/linux-backup-manager/issues) - تقارير الأخطاء
+- [GitHub Discussions](https://github.com/61Maz19/linux-backup-manager/discussions) - الدعم
 
 ---
-
-</div>
 
 </div>
 
 <div align="center">
 
----
-
 **صُنع بـ ❤️ بواسطة [61Maz19](https://github.com/61Maz19)**
 
-**آخر تحديث:** 2025-11-02
+**آخر تحديث:** 2025-11-04
 
 [![GitHub Stars](https://img.shields.io/github/stars/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/network/members)
-[![GitHub Watchers](https://img.shields.io/github/watchers/61Maz19/linux-backup-manager?style=social)](https://github.com/61Maz19/linux-backup-manager/watchers)
 
 </div>
