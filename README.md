@@ -1821,9 +1821,9 @@ If you find this project useful:
 
 ---
 <div dir="rtl" align="right">
-
-# 🔄 Linux Backup Manager
 <a name="arabic"></a>
+# 🔄 Linux Backup Manager
+
 
 ### حل النسخ الاحتياطي الآلي من الدرجة المؤسسية مع نظام دوران GFS
 </div>
@@ -3143,6 +3143,8 @@ echo "<h1>Report</h1><p>All systems operational</p>" | sudo ./scripts/alert.sh -
 │   └── exclude.list                # أنماط الاستثناء
 │
 
+```
+<div align="center">
 **صُنع بـ ❤️ بواسطة [61Maz19](https://github.com/61Maz19)**
 
 **آخر تحديث:** 2025-11-04 09:42 UTC
