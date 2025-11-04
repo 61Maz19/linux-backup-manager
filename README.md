@@ -1820,7 +1820,1327 @@ If you find this project useful:
 
 
 ---
+<div dir="rtl" align="right">
 
+# 🔄 Linux Backup Manager
+
+### حل النسخ الاحتياطي الآلي من الدرجة المؤسسية مع نظام دوران GFS
+</div>
+
+<a name="arabic"></a>
+
+<div dir="rtl" align="right">
+
+## 📖 جدول المحتويات
+
+- [نظرة عامة](#overview-ar)
+- [المميزات](#features-ar)
+- [إعداد الأجهزة المستهدفة](#target-device-setup-ar)
+- [التثبيت](#installation-ar)
+- [الإعدادات](#configuration-ar)
+- [الاستخدام](#usage-ar)
+- [هيكل المجلدات](#directory-structure-ar)
+- [المراقبة](#monitoring-ar)
+- [حل المشاكل](#troubleshooting-ar)
+- [المساهمة](#contributing-ar)
+- [الترخيص](#license-ar)
+
+---
+<a name="overview-ar"></a>
+## 🌟 نظرة عامة
+
+**Linux Backup Manager** هو نظام شامل وجاهز للإنتاج لأتمتة النسخ الاحتياطي مصمم لخوادم Linux والشبكات والبيئات المختلطة. يطبق استراتيجية **Grandfather-Father-Son (GFS)** المثبتة للاحتفاظ بالنسخ الاحتياطية، مما يوفر توازنًا مثاليًا بين الحماية من فقدان البيانات وكفاءة التخزين.
+
+تم بناء هذا الحل مع وضع البيئات المؤسسية في الاعتبار، حيث يوفر نسخًا احتياطية آلية وآمنة وفعالة مع الحد الأدنى من التدخل اليدوي.
+
+---
+<a name="features-ar"></a>
+## ✨ المميزات
+
+### القدرات الأساسية
+
+- 🔄 **سياسة دوران GFS**
+  - النسخ الاحتياطية اليومية: الاحتفاظ لمدة 7 أيام
+  - النسخ الاحتياطية الأسبوعية: الاحتفاظ لمدة 4 أسابيع
+  - النسخ الاحتياطية الشهرية: الاحتفاظ لمدة 12 شهرًا
+
+- 💾 **تحسين المساحة التخزينية**
+  - روابط ثابتة (Hard links) للملفات غير المتغيرة (توفير يصل إلى 90% من التخزين)
+  - نسخ احتياطية تزايدية باستخدام `rsync`
+  - دعم الضغط
+
+- 🔐 **ميزات الأمان**
+  - تكامل مع `ClamAV` لمكافحة الفيروسات
+  - حماية `fail2ban`
+  - مصادقة قائمة على مفاتيح SSH
+  - الحجر الصحي للملفات المشبوهة
+  - دعم التشفير باستخدام GPG (اختياري)
+
+- 📧 **نظام التنبيهات**
+  - إشعارات بريد إلكتروني متعددة الطرق (`msmtp`, `mail`, `sendmail`)
+  - دعم البريد الإلكتروني بصيغة HTML ونص عادي
+  - محفزات تنبيه قابلة للتخصيص
+  - إشعارات فشل النسخ الاحتياطي
+
+- 🌐 **تحسين الشبكة**
+  - ميزة SSH keep-alive للنقل الطويل
+  - تحديد عرض النطاق الترددي
+  - آلية إعادة محاولة الاتصال
+  - دعم مهام النسخ الاحتياطي المتوازية
+
+- 📊 **المراقبة والتقارير**
+  - تكامل مع Prometheus
+  - لوحات تحكم Grafana
+  - سجلات شاملة (لكل جهاز وعلى مستوى النظام)
+  - نصوص برمجية للتحقق من الحالة
+
+- ⚡ **الأتمتة**
+  - جدولة مرنة تعتمد على cron
+  - تنظيف تلقائي للاحتفاظ
+  - آليات الإصلاح الذاتي
+  - وضع الاختبار (dry-run)
+
+- 🛡️ **تكامل النظام**
+  - إعداد UFW/firewalld
+  - إنشاء تلقائي لهيكل المجلدات
+  - إدارة أجهزة متعددة
+  - دعم متعدد المنصات (Linux, Windows عبر WSL, macOS)
+
+---
+<a name="target-device-setup-ar"></a>
+## 🔧 إعداد الأجهزة المستهدفة
+
+قبل نسخ جهاز احتياطيًا، يجب عليك إعداده للوصول عبر SSH من خادم النسخ الاحتياطي.
+
+### المتطلبات الأساسية
+
+- خادم SSH مثبت وقيد التشغيل
+- اتصال شبكي بين خادم النسخ الاحتياطي والهدف
+- قواعد جدار حماية مناسبة
+- مستخدم لديه أذونات القراءة لمسارات النسخ الاحتياطي
+
+---
+
+### الإعداد لأجهزة Linux
+
+#### الخطوة 1: تثبيت خادم SSH
+
+**على Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install openssh-server -y
+sudo systemctl enable ssh
+sudo systemctl start ssh
+sudo systemctl status ssh
+```
+
+**على CentOS/RHEL/Rocky/AlmaLinux:**
+```bash
+sudo yum install openssh-server -y
+sudo systemctl enable sshd
+sudo systemctl start sshd
+sudo systemctl status sshd
+```
+
+#### الخطوة 2: إنشاء مستخدم النسخ الاحتياطي
+
+```bash
+# إنشاء مستخدم مخصص للنسخ الاحتياطية
+sudo useradd -m -s /bin/bash backup
+
+# تعيين كلمة مرور قوية (اختياري، سنستخدم مفاتيح SSH)
+sudo passwd backup
+
+# منح امتيازات sudo إذا لزم الأمر لمسارات معينة
+sudo usermod -aG sudo backup      # Ubuntu/Debian
+sudo usermod -aG wheel backup     # CentOS/RHEL
+```
+
+#### الخطوة 3: إعداد مصادقة مفتاح SSH
+
+**على خادم النسخ الاحتياطي:**
+
+```bash
+# التبديل إلى مستخدم backup
+sudo su - backup
+
+# إنشاء زوج مفاتيح SSH (إذا لم يكن موجودًا بالفعل)
+ssh-keygen -t ed25519 -C "backup@$(hostname)"
+# اضغط Enter 3 مرات لاستخدام الإعدادات الافتراضية
+
+# نسخ المفتاح العام إلى الجهاز المستهدف
+ssh-copy-id backup@192.168.1.10
+# أدخل كلمة مرور مستخدم backup عند المطالبة
+
+# اختبار الاتصال (يجب ألا يطلب كلمة مرور)
+ssh backup@192.168.1.10 "hostname && echo 'Connection successful!'"
+```
+
+**البديل اليدوي (إذا فشل ssh-copy-id):**
+
+على خادم النسخ الاحتياطي:
+```bash
+# عرض المفتاح العام
+cat ~/.ssh/id_ed25519.pub
+```
+
+على الجهاز المستهدف:
+```bash
+# التبديل إلى مستخدم backup
+sudo su - backup
+
+# إنشاء مجلد .ssh بالأذونات الصحيحة
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# إضافة المفتاح العام
+nano ~/.ssh/authorized_keys
+# الصق المفتاح العام، احفظ واخرج (Ctrl+O, Enter, Ctrl+X)
+
+# تعيين الأذونات الصحيحة
+chmod 600 ~/.ssh/authorized_keys
+
+# التحقق من الملكية
+ls -la ~/.ssh/
+```
+
+#### الخطوة 4: إعداد SSH للأمان (موصى به)
+
+على الجهاز المستهدف:
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+تأكد من هذه الإعدادات:
+```
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+```
+
+إعادة تشغيل SSH:
+```bash
+sudo systemctl restart ssh      # Ubuntu/Debian
+sudo systemctl restart sshd     # CentOS/RHEL
+```
+
+#### الخطوة 5: إعداد جدار الحماية
+
+**باستخدام UFW على Ubuntu/Debian:**
+```bash
+sudo ufw allow from 192.168.1.100 to any port 22 proto tcp
+sudo ufw enable
+sudo ufw status
+```
+
+**باستخدام firewalld على CentOS/RHEL:**
+```bash
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.100" port protocol="tcp" port="22" accept'
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all
+```
+
+#### الخطوة 6: اختبار مسارات النسخ الاحتياطي
+
+من خادم النسخ الاحتياطي:
+```bash
+# اختبار صلاحية القراءة للمسارات التي تريد نسخها احتياطيًا
+sudo -u backup ssh backup@192.168.1.10 "ls -lah /var/www"
+sudo -u backup ssh backup@192.168.1.10 "ls -lah /etc/nginx"
+sudo -u backup ssh backup@192.168.1.10 "ls -lah /home"
+```
+
+إذا تم رفض الإذن:
+```bash
+# على الجهاز المستهدف، اضبط الأذونات حسب الحاجة
+sudo chmod -R o+rX /var/www
+# أو أضف مستخدم backup إلى المجموعة المناسبة
+sudo usermod -aG www-data backup
+```
+
+---
+
+### الإعداد لأجهزة Windows
+
+يمكن نسخ أجهزة Windows احتياطيًا باستخدام طريقتين:
+1. **WSL (Windows Subsystem for Linux)** - موصى به، نهج حديث
+2. **Cygwin** - بديل لإصدارات Windows القديمة
+
+---
+
+#### الخيار أ: Windows Subsystem for Linux (WSL) - موصى به
+
+**المتطلبات:** Windows 10 الإصدار 2004+ أو Windows 11
+
+**على جهاز Windows (قم بتشغيل PowerShell كمسؤول):**
+
+**1. تفعيل WSL:**
+```powershell
+# تثبيت WSL مع Ubuntu
+wsl --install
+
+# أعد تشغيل الكمبيوتر إذا طُلب منك ذلك
+```
+
+**2. بعد إعادة التشغيل، أكمل إعداد Ubuntu:**
+```powershell
+# سيفتح Ubuntu تلقائيًا
+# أنشئ اسم مستخدم وكلمة مرور عند المطالبة
+# مثال على اسم المستخدم: wsluser
+```
+
+**3. داخل WSL Ubuntu، قم بتثبيت خادم SSH:**
+```bash
+# تحديث قائمة الحزم
+sudo apt update
+
+# تثبيت خادم OpenSSH
+sudo apt install openssh-server -y
+
+# تحرير إعدادات SSH
+sudo nano /etc/ssh/sshd_config
+```
+
+**تأكد من هذه الإعدادات:**
+```
+Port 22
+ListenAddress 0.0.0.0
+PubkeyAuthentication yes
+PasswordAuthentication yes  # سيتم تعطيله بعد إعداد مفتاح SSH
+```
+
+**4. بدء خدمة SSH:**
+```bash
+# بدء SSH
+sudo service ssh start
+
+# جعل SSH يبدأ تلقائيًا عند تشغيل WSL
+echo 'sudo service ssh start' >> ~/.bashrc
+
+# التحقق من الحالة
+sudo service ssh status
+```
+
+**5. الحصول على عنوان IP لـ Windows:**
+```powershell
+# في PowerShell
+ipconfig
+
+# ابحث عن "IPv4 Address" تحت محول الشبكة النشط
+# مثال: 192.168.1.25
+```
+
+**6. إعداد جدار حماية Windows:**
+```powershell
+# قم بالتشغيل في PowerShell كمسؤول
+New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
+
+**7. إضافة مفتاح SSH من خادم النسخ الاحتياطي:**
+
+**على خادم النسخ الاحتياطي:**
+```bash
+# استبدل 'wsluser' باسم المستخدم الخاص بك في WSL
+# استبدل '192.168.1.25' بعنوان IP الخاص بجهاز Windows
+sudo -u backupuser ssh-copy-id wsluser@192.168.1.25
+
+# اختبار الاتصال
+sudo -u backupuser ssh wsluser@192.168.1.25 "hostname"
+```
+
+**8. فهم مسارات Windows في WSL:**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ مسار Windows         │  مسار WSL                         │
+├──────────────────────────────────────────────────────────┤
+│ C:\                  │  /mnt/c/                          │
+│ D:\                  │  /mnt/d/                          │
+│ E:\                  │  /mnt/e/                          │
+│                      │                                   │
+│ C:\Users\John        │  /mnt/c/Users/John                │
+│ C:\Users\John\Documents  │  /mnt/c/Users/John/Documents  │
+│ D:\Projects          │  /mnt/d/Projects                  │
+│ D:\Backups\Data      │  /mnt/d/Backups/Data              │
+└──────────────────────────────────────────────────────────┘
+```
+
+**9. اختبار الوصول إلى ملفات Windows:**
+```bash
+# من خادم النسخ الاحتياطي
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/c"
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/c/Users"
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -la /mnt/d"
+```
+
+**10. إضافة إلى discovered_devices.txt:**
+```bash
+# الصيغة: IP  HOSTNAME  WSL_USER  PATH1  PATH2  PATH3
+# استخدم /mnt/c/ للقرص C:، /mnt/d/ للقرص D:، إلخ.
+
+192.168.1.25  windows-pc  wsluser  /mnt/c/Users/John/Documents  /mnt/d/Projects
+```
+
+**مسارات النسخ الاحتياطي الشائعة في Windows (بأسلوب WSL):**
+```
+/mnt/c/Users/YourName/Documents
+/mnt/c/Users/YourName/Desktop
+/mnt/c/Users/YourName/Pictures
+/mnt/c/Users/YourName/Downloads
+/mnt/d/Projects
+/mnt/d/Data
+```
+
+---
+
+#### الخيار ب: Cygwin - طريقة بديلة
+
+**المتطلبات:** أي إصدار من Windows (XP+)
+
+**1. تحميل Cygwin:**
+- زر الموقع: https://www.cygwin.com/
+- قم بتحميل: `setup-x86_64.exe` (64-bit) أو `setup-x86.exe` (32-bit)
+
+**2. تثبيت Cygwin مع الحزم المطلوبة:**
+- قم بتشغيل المثبت
+- اختر "Install from Internet"
+- حدد دليل التثبيت (الافتراضي: `C:\cygwin64`)
+- حدد الحزم:
+  - `openssh` (فئة Net)
+  - `rsync` (فئة Net)
+  - `cygrunsrv` (فئة Admin)
+  - `nano` أو `vim` (فئة Editors)
+
+**3. إعداد خادم SSH:**
+```bash
+# افتح Cygwin Terminal
+
+# إعداد مضيف SSH
+ssh-host-config -y
+
+# عند المطالبة:
+# - قيمة CYGWIN: ntsec
+# - مستخدم مميز: yes
+# - اسم المستخدم: cyg_server (الافتراضي)
+
+# بدء خدمة SSH
+cygrunsrv -S sshd
+
+# أو يدويًا للاختبار:
+/usr/sbin/sshd
+```
+
+**4. إعداد جدار حماية Windows:**
+```powershell
+# في PowerShell كمسؤول
+New-NetFirewallRule -Name 'Cygwin-SSH' -DisplayName 'Cygwin SSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
+
+**5. إضافة مفتاح SSH من خادم النسخ الاحتياطي:**
+
+**على خادم النسخ الاحتياطي:**
+```bash
+# استبدل 'youruser' باسم مستخدم Windows الخاص بك
+# استبدل '192.168.1.25' بعنوان IP الخاص بجهاز Windows
+sudo -u backupuser ssh-copy-id youruser@192.168.1.25
+
+# اختبار الاتصال
+sudo -u backupuser ssh youruser@192.168.1.25 "hostname"
+```
+
+**6. فهم مسارات Windows في Cygwin:**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ مسار Windows         │  مسار Cygwin                          │
+├──────────────────────────────────────────────────────────────┤
+│ C:\                  │  /cygdrive/c/                         │
+│ D:\                  │  /cygdrive/d/                         │
+│ E:\                  │  /cygdrive/e/                         │
+│                      │                                       │
+│ C:\Users\John        │  /cygdrive/c/Users/John               │
+│ C:\Users\John\Documents  │  /cygdrive/c/Users/John/Documents │
+│ D:\Projects          │  /cygdrive/d/Projects                 │
+│ D:\Backups\Data      │  /cygdrive/d/Backups/Data             │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**7. اختبار الوصول إلى ملفات Windows:**
+```bash
+# من خادم النسخ الاحتياطي
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/c"
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/c/Users"
+sudo -u backupuser ssh youruser@192.168.1.25 "ls -la /cygdrive/d"
+```
+
+**8. إضافة إلى discovered_devices.txt:**
+```bash
+# الصيغة: IP  HOSTNAME  WINDOWS_USER  PATH1  PATH2  PATH3
+# استخدم /cygdrive/c/ للقرص C:، /cygdrive/d/ للقرص D:، إلخ.
+
+192.168.1.25  windows-pc  youruser  /cygdrive/c/Users/John/Documents  /cygdrive/d/Projects
+```
+
+**مسارات النسخ الاحتياطي الشائعة في Windows (بأسلوب Cygwin):**
+```
+/cygdrive/c/Users/YourName/Documents
+/cygdrive/c/Users/YourName/Desktop
+/cygdrive/c/Users/YourName/Pictures
+/cygdrive/c/Users/YourName/Downloads
+/cygdrive/d/Projects
+/cygdrive/d/Data
+```
+
+---
+
+#### استكشاف أخطاء Windows وإصلاحها
+
+**المشكلة: خدمة SSH لا تبدأ في WSL**
+```bash
+# التحقق مما إذا كانت الخدمة قيد التشغيل
+sudo service ssh status
+
+# إذا لم تكن قيد التشغيل، تحقق من الأخطاء
+sudo /usr/sbin/sshd -d
+
+# الإصلاح الشائع: إعادة إنشاء مفاتيح المضيف
+sudo ssh-keygen -A
+sudo service ssh restart
+```
+
+**المشكلة: لا يمكن الوصول إلى ملفات Windows من WSL**
+```bash
+# تحقق مما إذا كانت الأقراص محملة
+ls -la /mnt/
+
+# إذا كان القرص C: مفقودًا، قم بتحميله
+sudo mkdir -p /mnt/c
+sudo mount -t drvfs C: /mnt/c
+
+# اجعله دائمًا (أضف إلى /etc/fstab)
+echo "C: /mnt/c drvfs defaults 0 0" | sudo tee -a /etc/fstab
+```
+
+**المشكلة: تم رفض الإذن على ملفات Windows**
+```bash
+# في WSL، قد يكون لملفات Windows أذونات مختلفة
+# تحقق من الأذونات الفعلية
+ls -la /mnt/c/Users/YourName/
+
+# إذا فشل النسخ الاحتياطي، حاول تشغيل WSL كمسؤول
+# أو اضبط أذونات مجلد Windows:
+# انقر بزر الماوس الأيمن على المجلد → Properties → Security → Edit
+# امنح المستخدم الخاص بك إذن "Read"
+```
+
+**المشكلة: Cygwin SSH غير قابل للوصول من الشبكة**
+```bash
+# حرر إعدادات SSH للاستماع على جميع الواجهات
+nano /etc/sshd_config
+
+# تأكد من:
+ListenAddress 0.0.0.0
+
+# أعد تشغيل الخدمة
+cygrunsrv -E sshd
+cygrunsrv -S sshd
+```
+
+---
+
+#### مرجع سريع لمسارات Windows
+
+**WSL (موصى به):**
+```bash
+# أمثلة لـ discovered_devices.txt
+192.168.1.25  win-laptop  wsluser  /mnt/c/Users/John/Documents
+192.168.1.26  win-desktop wsluser  /mnt/c/Users/Sarah/Desktop  /mnt/d/Projects
+192.168.1.27  win-server  wsluser  /mnt/c/inetpub/wwwroot  /mnt/d/Databases
+```
+
+**Cygwin (بديل):**
+```bash
+# أمثلة لـ discovered_devices.txt
+192.168.1.25  win-laptop  john   /cygdrive/c/Users/John/Documents
+192.168.1.26  win-desktop sarah  /cygdrive/c/Users/Sarah/Desktop  /cygdrive/d/Projects
+192.168.1.27  win-server  admin  /cygdrive/c/inetpub/wwwroot  /cygdrive/d/Databases
+```
+
+**أوامر الاختبار:**
+```bash
+# اختبار مسارات WSL
+sudo -u backupuser ssh wsluser@192.168.1.25 "ls -lah /mnt/c/Users"
+
+# اختبار مسارات Cygwin
+sudo -u backupuser ssh john@192.168.1.25 "ls -lah /cygdrive/c/Users"
+
+# اختبار النسخ الاحتياطي الكامل (dry-run)
+sudo -u backupuser rsync -avz --dry-run wsluser@192.168.1.25:/mnt/c/Users/John/Documents/ /tmp/test/
+```
+
+---
+
+### جدول مقارنة المسارات: Windows مقابل Linux
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ النظام   │ الطريقة  │ القرص C:       │ القرص D:       │ مثال على المسار │
+├──────────────────────────────────────────────────────────────────┤
+│ Windows  │ WSL     │ /mnt/c/         │ /mnt/d/         │ /mnt/c/Users   │
+│ Windows  │ Cygwin  │ /cygdrive/c/    │ /cygdrive/d/    │ /cygdrive/c/Users │
+│ Linux    │ Native  │ N/A             │ N/A             │ /home/user     │
+│ macOS    │ Native  │ N/A             │ N/A             │ /Users/user    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**تذكر:**
+- ✅ **WSL يستخدم:** `/mnt/c/`, `/mnt/d/`, إلخ.
+- ✅ **Cygwin يستخدم:** `/cygdrive/c/`, `/cygdrive/d/`, إلخ.
+- ❌ **لا تستخدم أبدًا:** `C:\` أو `D:\` (مسارات بأسلوب Windows لن تعمل في rsync/SSH)
+
+---
+
+### الإعداد لأجهزة macOS
+
+#### الخطوة 1: تفعيل تسجيل الدخول عن بُعد
+
+```bash
+# تفعيل SSH (Remote Login)
+sudo systemsetup -setremotelogin on
+
+# التحقق
+sudo systemsetup -getremotelogin
+# يجب أن يظهر: Remote Login: On
+```
+
+**أو عبر واجهة المستخدم الرسومية:**
+- System Preferences → Sharing
+- تفعيل "Remote Login"
+- حدد المستخدمين الذين يمكنهم الوصول
+
+#### الخطوة 2: إنشاء مستخدم النسخ الاحتياطي (اختياري)
+
+**عبر واجهة المستخدم الرسومية:**
+- System Preferences → Users & Groups
+- انقر على أيقونة القفل، أدخل كلمة مرور المسؤول
+- انقر على '+' لإضافة مستخدم
+- أنشئ مستخدم "backup"
+
+**عبر سطر الأوامر:**
+```bash
+sudo dscl . -create /Users/backup
+sudo dscl . -create /Users/backup UserShell /bin/bash
+sudo dscl . -create /Users/backup RealName "Backup User"
+sudo dscl . -create /Users/backup UniqueID 503
+sudo dscl . -create /Users/backup PrimaryGroupID 80
+sudo dscl . -create /Users/backup NFSHomeDirectory /Users/backup
+sudo dscl . -passwd /Users/backup YourPassword
+sudo dscl . -append /Groups/admin GroupMembership backup
+```
+
+#### الخطوة 3: إعداد مفتاح SSH
+
+```bash
+# كمستخدم backup
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# أضف المفتاح العام من خادم النسخ الاحتياطي
+nano ~/.ssh/authorized_keys
+# الصق المفتاح، احفظ
+
+chmod 600 ~/.ssh/authorized_keys
+```
+
+#### الخطوة 4: إعداد جدار الحماية
+
+```bash
+# السماح لـ SSH عبر جدار الحماية
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/sbin/sshd
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/sbin/sshd
+```
+
+#### الخطوة 5: اختبار من خادم النسخ الاحتياطي
+
+```bash
+sudo -u backup ssh backup@mac-ip "sw_vers"
+sudo -u backup ssh backup@mac-ip "ls -la /Users"
+```
+
+---
+
+### قائمة التحقق من الأمان ✅
+
+قبل إضافة أي جهاز إلى النسخ الاحتياطية:
+
+- ✅ **تم إعداد مصادقة مفتاح SSH وهي تعمل**
+- ✅ **تم تعطيل مصادقة كلمة المرور** (موصى به)
+- ✅ **جدار الحماية يسمح بـ SSH فقط من عنوان IP لخادم النسخ الاحتياطي**
+- ✅ **يوجد مستخدم backup على الجهاز المستهدف**
+- ✅ **لدى مستخدم backup صلاحية قراءة للمسارات المطلوبة**
+- ✅ **اتصال SSH يعمل بدون مطالبة بكلمة المرور**
+- ✅ **الجهاز المستهدف على شبكة آمنة وموثوقة**
+- ✅ **تم التحقق من مفتاح مضيف SSH** (تحقق من البصمة عند الاتصال الأول)
+- ✅ **تم تعطيل الخدمات غير الضرورية على الهدف**
+- ✅ **يتم مراقبة سجلات النظام للنشاط المشبوه**
+
+---
+
+### قائمة التحقق من اختبار الاتصال 🧪
+
+قم بتشغيل هذه الاختبارات من خادم النسخ الاحتياطي:
+
+```bash
+# 1. الاتصال الأساسي
+ping -c 4 192.168.1.10
+
+# 2. منفذ SSH مفتوح
+nc -zv 192.168.1.10 22
+
+# 3. اتصال SSH بدون كلمة مرور
+sudo -u backup ssh backup@192.168.1.10 "echo SSH works"
+
+# 4. التحقق من اسم المضيف
+sudo -u backup ssh backup@192.168.1.10 "hostname"
+
+# 5. اختبار rsync
+sudo -u backup rsync -avz --dry-run backup@192.168.1.10:/tmp/ /tmp/test/
+
+# 6. التحقق من الوصول إلى المسار
+sudo -u backup ssh backup@192.168.1.10 "ls -la /var/www"
+sudo -u backup ssh backup@192.168.1.10 "ls -la /etc/nginx"
+sudo -u backup ssh backup@192.168.1.10 "ls -la /home"
+
+# 7. التحقق من مساحة القرص على الهدف
+sudo -u backup ssh backup@192.168.1.10 "df -h"
+
+# 8. التحقق من عدم وجود مطالبة بكلمة المرور
+# يجب أن يكتمل فورًا دون سؤال أي شيء
+sudo -u backup ssh -o BatchMode=yes backup@192.168.1.10 "date"
+```
+
+**يجب أن تنجح جميع الاختبارات دون أخطاء أو مطالبات بكلمة مرور!**
+
+---
+<a name="installation-ar"></a>
+## 📥 التثبيت
+
+### المتطلبات الأساسية
+
+- **نظام التشغيل:** Linux (Ubuntu 20.04+, Debian 10+, CentOS 8+, RHEL 8+)
+- **الوصول:** صلاحيات root أو sudo
+- **التخزين:** 100GB+ مساحة حرة (موصى به)
+- **الشبكة:** اتصال بالأجهزة المستهدفة
+- **البرامج:** bash 5.0+, git
+
+---
+
+### التثبيت السريع
+
+```bash
+# 1. استنساخ المستودع
+git clone https://github.com/61Maz19/linux-backup-manager.git
+cd linux-backup-manager
+
+# 2. تثبيت جميع التبعيات
+sudo ./scripts/install_tools.sh
+
+# 3. إنشاء هيكل المجلدات
+sudo ./scripts/setup_folders.sh
+
+# 4. إعداد جدار الحماية (اختياري لكن موصى به)
+sudo ./scripts/setup_firewall.sh
+
+# 5. إعداد المراقبة (اختياري)
+sudo ./scripts/setup_monitoring.sh --basic
+```
+
+---
+
+### التثبيت اليدوي
+
+**الخطوة 1: تثبيت الحزم المطلوبة**
+
+**على Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install -y rsync openssh-client openssh-server cron wget curl \
+                     mailutils msmtp msmtp-mta net-tools tree gzip pigz gpg \
+                     clamav clamav-daemon fail2ban ufw
+```
+
+**على CentOS/RHEL/Rocky/AlmaLinux:**
+```bash
+sudo yum install -y rsync openssh-clients openssh-server cronie wget curl \
+                    mailx msmtp net-tools tree gzip pigz gnupg2 \
+                    clamav clamd fail2ban firewalld
+```
+
+**الخطوة 2: إنشاء مستخدم النسخ الاحتياطي (مرة واحدة فقط)**
+
+```bash
+# تحقق مما إذا كان backupuser موجودًا بالفعل
+id backupuser 2>/dev/null
+
+# إذا لم يكن موجودًا، أنشئه:
+sudo useradd -m -s /bin/bash backupuser
+
+# عين كلمة مرور قوية
+sudo passwd backupuser
+
+# امنح امتيازات sudo (اختياري، فقط إذا لزم الأمر لمسارات معينة)
+sudo usermod -aG sudo backupuser      # Ubuntu/Debian
+sudo usermod -aG wheel backupuser     # CentOS/RHEL
+```
+
+**الخطوة 3: إنشاء هيكل المجلدات**
+
+```bash
+# إنشاء المجلدات الرئيسية
+sudo mkdir -p /backup/{config,devices,logs,scripts,quarantine}
+
+# تعيين الملكية لـ backupuser
+sudo chown -R backupuser:backupuser /backup
+
+# تعيين أذونات آمنة
+sudo chmod -R 750 /backup
+```
+
+**الخطوة 4: إنشاء مفتاح SSH (كـ backupuser)**
+
+```bash
+# التبديل إلى backupuser
+sudo su - backupuser
+
+# إنشاء زوج مفاتيح SSH (إذا لم يكن موجودًا)
+if [ ! -f ~/.ssh/id_ed25519 ]; then
+    ssh-keygen -t ed25519 -C "backupuser@$(hostname)"
+    # اضغط Enter 3 مرات (بدون عبارة مرور للأتمتة)
+fi
+
+# عرض المفتاح العام (ستحتاج هذا للأجهزة المستهدفة)
+cat ~/.ssh/id_ed25519.pub
+
+# اخرج والعودة إلى مستخدمك
+exit
+```
+
+**الخطوة 5: نسخ السكريبتات والإعدادات**
+
+```bash
+# نسخ السكريبتات
+sudo cp -r scripts/* /backup/scripts/
+sudo chmod +x /backup/scripts/*.sh
+sudo chown -R backupuser:backupuser /backup/scripts/
+
+# نسخ قوالب الإعدادات
+sudo cp config/*.example /backup/config/
+sudo chown backupuser:backupuser /backup/config/*.example
+```
+
+---
+<a name="configuration-ar"></a>
+## ⚙️ الإعدادات
+
+### الخطوة 1: ملف الإعدادات الرئيسي
+
+```bash
+# نسخ مثال الإعدادات
+sudo cp /backup/config/backup_config.conf.example /backup/config/backup_config.conf
+
+# تعيين الملكية
+sudo chown backupuser:backupuser /backup/config/backup_config.conf
+
+# تحرير الإعدادات
+sudo nano /backup/config/backup_config.conf
+```
+
+**الإعدادات الرئيسية لتهيئتها:**
+
+```bash
+# ============================================
+# مستخدم خادم النسخ الاحتياطي
+# ============================================
+BACKUP_USER="backupuser"
+
+# ============================================
+# موقع مفتاح SSH
+# ============================================
+SSH_KEY="/home/backupuser/.ssh/id_ed25519"
+
+# ============================================
+# سياسة الاحتفاظ
+# ============================================
+RETENTION_DAILY=7        # الاحتفاظ بالنسخ الاحتياطية اليومية لمدة 7 أيام
+RETENTION_WEEKLY=4       # الاحتفاظ بالنسخ الاحتياطية الأسبوعية لمدة 4 أسابيع
+RETENTION_MONTHLY=12     # الاحتفاظ بالنسخ الاحتياطية الشهرية لمدة 12 شهرًا
+
+# ============================================
+# تنبيهات البريد الإلكتروني
+# ============================================
+ENABLE_ALERTS="true"
+ALERT_EMAIL="admin@example.com"
+EMAIL_FROM="backupuser@$(hostname)"
+MSMTP_ACCOUNT="default"
+
+# ============================================
+# التشفير (اختياري)
+# ============================================
+ENABLE_ENCRYPTION="false"
+GPG_RECIPIENT="admin@example.com"
+
+# ============================================
+# إعدادات الشبكة
+# ============================================
+SSH_TIMEOUT=20
+SSH_KEEPALIVE=60
+SSH_RETRY_COUNT=3
+
+# ============================================
+# الأداء
+# ============================================
+MAX_PARALLEL_JOBS=2
+BANDWIDTH_LIMIT=""           # فارغ = غير محدود، أو "5000" لـ 5MB/s
+COMPRESSION_LEVEL=6          # 0-9، أعلى = ضغط أكثر
+
+# ============================================
+# خيارات متقدمة
+# ============================================
+ENABLE_DEDUPLICATION="true"  # استخدام روابط ثابتة لتوفير المساحة
+VERIFY_CHECKSUMS="false"     # أبطأ لكن أكثر أمانًا
+QUARANTINE_SUSPICIOUS="true" # حجر الملفات المكتشفة بواسطة ClamAV
+```
+
+---
+
+### الخطوة 2: إضافة أجهزة للنسخ الاحتياطي
+
+**⚠️ مهم:** استخدم اسم المستخدم الصحيح لكل جهاز مستهدف!
+
+**الطريقة أ: تفاعلي (موصى به)**
+
+```bash
+sudo -u backupuser /backup/scripts/discover_devices.sh --add
+```
+
+اتبع المطالبات:
+```
+Enter device IP address: 192.168.1.17
+Enter device hostname: my-laptop
+Enter SSH username: m                    # ← اسم المستخدم على الجهاز المستهدف
+Enter paths to backup: /home/m /var/www
+```
+
+**الطريقة ب: التحرير اليدوي**
+
+```bash
+# نسخ المثال
+sudo cp /backup/config/discovered_devices.txt.example /backup/config/discovered_devices.txt
+
+# تعيين الملكية
+sudo chown backupuser:backupuser /backup/config/discovered_devices.txt
+
+# تحرير الملف
+sudo nano /backup/config/discovered_devices.txt
+```
+
+**أضف أجهزتك (واحد لكل سطر):**
+
+```bash
+# الصيغة: IP_ADDRESS  HOSTNAME  TARGET_USER  PATH1  PATH2  PATH3
+#
+# مهم: TARGET_USER = اسم المستخدم على الجهاز المستهدف، وليس "backupuser"
+#
+# أمثلة بأسماء مستخدمين حقيقية:
+
+192.168.1.17   my-laptop    m        /home/m  /var/www
+192.168.1.20   webserver    admin    /var/www /etc/nginx
+192.168.1.30   database     dbadmin  /var/lib/mysql /etc/mysql
+10.0.0.50      devserver    john     /home/john/projects
+192.168.1.25   windows-pc   wsluser  /mnt/c/Users/YourName
+```
+
+**إنشاء مجلدات للأجهزة:**
+```bash
+sudo -u backupuser /backup/scripts/discover_devices.sh --init
+```
+
+---
+
+### الخطوة 3: إعداد الاستثناءات
+
+```bash
+# نسخ المثال
+sudo cp /backup/config/exclude.list.example /backup/config/exclude.list
+
+# تعيين الملكية
+sudo chown backupuser:backupuser /backup/config/exclude.list
+
+# تحرير الاستثناءات
+sudo nano /backup/config/exclude.list
+```
+
+**الاستثناءات الشائعة:**
+```
+# الملفات المؤقتة
+*.tmp
+*.temp
+*.cache
+*~
+*.swp
+*.bak
+
+# مجلدات النظام (Linux)
+/proc/
+/sys/
+/dev/
+/run/
+/tmp/
+
+# السجلات
+*.log.*
+*.log.gz
+*.log.bz2
+
+# التطوير
+node_modules/
+.git/
+.svn/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ذاكرة التخزين المؤقت للوسائط الكبيرة
+.cache/
+Cache/
+cache/
+
+# خاص بـ Windows (إذا كنت تنسخ WSL احتياطيًا)
+pagefile.sys
+hiberfil.sys
+swapfile.sys
+```
+
+---
+
+### الخطوة 4: إعداد تنبيهات البريد الإلكتروني (اختياري)
+
+**باستخدام msmtp (موصى به لـ Gmail):**
+
+```bash
+# تحرير إعدادات msmtp
+sudo nano /etc/msmtprc
+```
+
+**لـ Gmail:**
+```
+defaults
+auth           on
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /var/log/msmtp.log
+
+account default
+host           smtp.gmail.com
+port           587
+from           your-email@gmail.com
+user           your-email@gmail.com
+password       your-app-password-here
+```
+
+**الحصول على كلمة مرور تطبيق Gmail:**
+1. اذهب إلى: https://myaccount.google.com/apppasswords
+2. حدد "Mail" و "Other (Custom name)"
+3. أدخل "Backup System"
+4. أنشئ وانسخ كلمة المرور
+5. استخدمها في إعدادات msmtp أعلاه
+
+**تأمين الملف:**
+```bash
+sudo chmod 600 /etc/msmtprc
+sudo chown root:root /etc/msmtprc
+```
+
+**إنشاء ملف السجل:**
+```bash
+sudo touch /var/log/msmtp.log
+sudo chmod 666 /var/log/msmtp.log
+```
+
+**اختبار البريد الإلكتروني:**
+```bash
+echo "Test email from backup system on $(hostname)" | sudo -u backupuser /backup/scripts/alert.sh "Test Alert"
+```
+
+**البديل: استخدام sendmail/mailx:**
+
+```bash
+# تثبيت mailutils
+sudo apt install mailutils  # Ubuntu/Debian
+sudo yum install mailx      # CentOS/RHEL
+
+# التهيئة في backup_config.conf
+ALERT_METHOD="mail"  # أو "sendmail"
+```
+
+---
+
+### الخطوة 5: التحقق من الإعدادات
+
+**قم بتشغيل هذه الفحوصات قبل جدولة النسخ الاحتياطية:**
+
+```bash
+# 1. تحقق من وجود backupuser ولديه المنزل الصحيح
+id backupuser
+ls -la /home/backupuser
+
+# 2. تحقق من وجود مفتاح SSH
+sudo -u backupuser ls -la /home/backupuser/.ssh/
+sudo -u backupuser cat /home/backupuser/.ssh/id_ed25519.pub
+
+# 3. تحقق من ملكية مجلد /backup
+ls -la /backup
+
+# 4. تحقق من ملفات الإعدادات
+sudo -u backupuser cat /backup/config/backup_config.conf | grep BACKUP_USER
+sudo -u backupuser cat /backup/config/discovered_devices.txt
+
+# 5. اختبار اتصالات SSH لجميع الأجهزة المستهدفة
+# استبدل باسم المستخدم الفعلي و IP
+sudo -u backupuser ssh m@192.168.1.17 "echo SSH works"
+sudo -u backupuser ssh admin@192.168.1.20 "echo SSH works"
+
+# 6. اختبار سكريبت النسخ الاحتياطي (dry-run)
+sudo -u backupuser /backup/scripts/backup_manager.sh --test --verbose
+
+# 7. تحقق من مساحة القرص
+df -h /backup
+```
+
+**المخرجات المتوقعة للفحص #3:**
+```
+drwxr-x--- 7 backupuser backupuser 4096 ... /backup
+```
+
+**إذا كان هناك خطأ، أصلح الملكية:**
+```bash
+sudo chown -R backupuser:backupuser /backup
+sudo chmod -R 750 /backup
+```
+
+---
+
+## 🔄 مرجع سريع
+
+### المسارات المهمة
+```
+منزل المستخدم:      /home/backupuser
+مفتاح SSH:           /home/backupuser/.ssh/id_ed25519
+مجلد النسخ الاحتياطي: /backup
+السكريبتات:          /backup/scripts
+الإعدادات:           /backup/config
+الأجهزة:             /backup/devices
+السجلات:             /backup/logs
+```
+
+### الأوامر المهمة
+```bash
+# التبديل إلى backupuser
+sudo su - backupuser
+
+# تشغيل النسخ الاحتياطي يدويًا
+sudo -u backupuser /backup/scripts/backup_manager.sh
+
+# اختبار النسخ الاحتياطي (dry-run)
+sudo -u backupuser /backup/scripts/backup_manager.sh --test
+
+# إضافة جهاز
+sudo -u backupuser /backup/scripts/discover_devices.sh --add
+
+# التحقق من الحالة
+sudo -u backupuser /backup/scripts/backup_status.sh
+
+# عرض السجلات
+tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
+```
+---
+<a name="usage-ar"></a>
+## 🚀 الاستخدام
+
+### النسخ الاحتياطي اليدوي
+
+```bash
+# النسخ الاحتياطي القياسي
+sudo ./scripts/backup_manager.sh
+
+# وضع الاختبار (dry-run، لا يوجد نسخ احتياطي فعلي)
+sudo ./scripts/backup_manager.sh --test
+
+# إخراج مفصل
+sudo ./scripts/backup_manager.sh --verbose
+
+# الاختبار مع الإخراج المفصل
+sudo ./scripts/backup_manager.sh --test --verbose
+
+# ملف إعدادات مخصص
+sudo ./scripts/backup_manager.sh --config /path/to/custom.conf
+
+# المساعدة
+./scripts/backup_manager.sh --help
+```
+
+### إدارة الأجهزة
+
+```bash
+# إضافة جهاز جديد تفاعليًا
+sudo ./scripts/discover_devices.sh --add
+
+# سرد جميع الأجهزة المهيأة
+sudo ./scripts/discover_devices.sh --list
+
+# إزالة جهاز
+sudo ./scripts/discover_devices.sh --remove 192.168.1.10
+
+# تهيئة المجلدات لجميع الأجهزة في الإعدادات
+sudo ./scripts/discover_devices.sh --init
+
+# المساعدة
+./scripts/discover_devices.sh --help
+```
+
+### الجدولة الآلية
+
+```bash
+# إعداد النسخ الاحتياطية اليومية في الساعة 11 صباحًا (افتراضي)
+sudo ./scripts/setup_cron.sh --daily
+
+# إعداد النسخ الاحتياطية اليومية في الساعة 2 صباحًا
+sudo ./scripts/setup_cron.sh --night
+
+# إعداد النسخ الاحتياطية كل ساعة
+sudo ./scripts/setup_cron.sh --hourly
+
+# إعداد النسخ الاحتياطية الأسبوعية (الأحد 11 صباحًا)
+sudo ./scripts/setup_cron.sh --weekly
+
+# جدول مخصص (الساعة 3 صباحًا يوميًا)
+sudo ./scripts/setup_cron.sh --time "0 3 * * *"
+
+# سرد مهام cron الحالية
+sudo ./scripts/setup_cron.sh --list
+
+# إزالة جميع مهام cron للنسخ الاحتياطي
+sudo ./scripts/setup_cron.sh --remove
+
+# المساعدة
+./scripts/setup_cron.sh --help
+```
+
+**صيغة جدول Cron:**
+```
+* * * * *
+│ │ │ │ │
+│ │ │ │ └─ يوم الأسبوع (0-7، 0 و 7 = الأحد)
+│ │ │ └─── الشهر (1-12)
+│ │ └───── يوم الشهر (1-31)
+│ └─────── الساعة (0-23)
+└───────── الدقيقة (0-59)
+```
+
+أمثلة:
+```
+0 2 * * *      # كل يوم في الساعة 2:00 صباحًا
+0 */6 * * *    # كل 6 ساعات
+0 0 * * 0      # كل يوم أحد في منتصف الليل
+0 3 1 * *      # اليوم الأول من كل شهر في الساعة 3 صباحًا
+```
+
+### المراقبة والحالة
+
+```bash
+# التحقق من حالة النظام
+sudo /backup/scripts/backup_status.sh
+
+# عرض سجلات النسخ الاحتياطي الحديثة
+tail -f /backup/logs/run_$(date +%Y-%m-%d)*.log
+
+# عرض جميع السجلات من اليوم
+cat /backup/logs/run_$(date +%Y-%m-%d)*.log
+
+# التحقق من سجل جهاز معين
+cat /backup/devices/192.168.1.10/logs/backup_$(date +%Y-%m-%d)*.log
+
+# التحقق من استخدام القرص
+df -h /backup
+du -sh /backup/devices/*
+
+# سرد النسخ الاحتياطية الأخيرة (آخر 24 ساعة)
+find /backup/devices -name "backup_*" -mtime -1 -type d
+
+# عد إجمالي النسخ الاحتياطية
+find /backup/devices -name "backup_*" -type d | wc -l
+
+# التحقق من أحجام النسخ الاحتياطية
+du -sh /backup/devices/*/current
+```
+
+### التنبيهات
+
+```bash
+# إرسال تنبيه اختبار
+echo "Test message" | sudo ./scripts/alert.sh "Test Subject"
+
+# إرسال تنبيه نجاح
+sudo ./scripts/alert.sh -t success "Backup Completed" "All systems backed up successfully"
+
+# إرسال تنبيه خطأ
+sudo ./scripts/alert.sh -t error "Backup Failed" "Server01 unreachable"
+
+# إرسال تحذير
+sudo ./scripts/alert.sh -t warning "Low Disk Space" "Only 10GB remaining"
+
+# إرسال بريد إلكتروني بصيغة HTML
+echo "<h1>Report</h1><p>All systems operational</p>" | sudo ./scripts/alert.sh --html "Daily Report"
+
+# المساعدة
+./scripts/alert.sh --help
+```
+
+---
+<a name="directory-structure-ar"></a>
+## 📂 هيكل المجلدات
+
+```
+/backup/
+├── devices/                          # جميع النسخ الاحتياطية للأجهزة
+│   ├── 192.168.1.10/                # الجهاز بواسطة IP
+│   │   ├── current/                 # أحدث نسخة احتياطية تزايدية
+│   │   │   ├── var_www/            # المسارات المنسوخة احتياطيًا
+│   │   │   └── etc_nginx/
+│   │   ├── history/                 # النسخ الاحتياطية التاريخية (GFS)
+│   │   │   ├── daily/              # آخر 7 أيام
+│   │   │   │   ├── backup_2025-11-01_020000/
+│   │   │   │   └── backup_2025-11-02_020000/
+│   │   │   ├── weekly/             # آخر 4 أسابيع
+│   │   │   │   └── backup_2025-10-27_020000/
+│   │   │   └── monthly/            # آخر 12 شهرًا
+│   │   │       └── backup_2025-10-01_020000/
+│   │   ├── logs/                    # سجلات خاصة بالجهاز
+│   │   │   └── backup_2025-11-02_020000.log
+│   │   ├── deleted/                 # أرشيف الملفات المحذوفة
+│   │   └── device_info.txt         # بيانات وصفية للجهاز
+│   │
+│   └── 192.168.1.20/               # جهاز آخر
+│       └── ...
+│
+├── config/                          # ملفات الإعدادات
+│   ├── backup_config.conf          # الإعدادات الرئيسية
+│   ├── discovered_devices.txt      # قائمة الأجهزة للنسخ الاحتياطي
+│   └── exclude.list                # أنماط الاستثناء
+│
 
 **صُنع بـ ❤️ بواسطة [61Maz19](https://github.com/61Maz19)**
 
