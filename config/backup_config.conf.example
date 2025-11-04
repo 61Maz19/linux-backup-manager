@@ -8,7 +8,7 @@
 # =======================================================================
 
 # === USER SETTINGS ===
-BACKUP_USER="backup"                    # Linux user for running backups
+BACKUP_USER="backupuser"                    # Linux user for running backups
 SSH_KEY="/home/backup/.ssh/id_ed25519"  # Path to SSH private key
 
 # === ENCRYPTION (Optional) ===
