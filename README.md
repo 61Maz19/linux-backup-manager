@@ -506,7 +506,7 @@ git clone https://github.com/61Maz19/linux-backup-manager.git
 cd linux-backup-manager
 
 # 2. Install all dependencies
-sudo .scripts/install_tools.sh
+sudo ./scripts/install_tools.sh
 
 # 3. Create directory structure
 sudo ./scripts/setup_folders.sh
