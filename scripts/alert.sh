@@ -1,12 +1,12 @@
 #!/bin/bash
 # =======================================================================
-# Alert & Notification System v2.5
+# Alert & Notification System v2.5 (improved)
 # =======================================================================
-# Supports both msmtp and standard mail utilities
-# Can send plain text or HTML emails
+# Supports msmtp/mail/sendmail with better logging and diagnostics
 # =======================================================================
 
 set -euo pipefail
+IFS=$'\n\t'
 
 SCRIPT_VERSION="2.5.0"
 BACKUP_ROOT="${BACKUP_ROOT:-/backup}"
@@ -19,188 +19,181 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+timestamp() { date +'%Y-%m-%d %H:%M:%S'; }
+
 log() {
     local message="$1"
     local color="${2:-$NC}"
-    echo -e "${color}[$(date +'%Y-%m-%d %H:%M:%S')] ${message}${NC}"
-    
-    # Log to file
-    mkdir -p "$(dirname "$LOGFILE")"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ${message}" >> "$LOGFILE"
+    if [ -t 1 ]; then
+        echo -e "${color}[$(timestamp)] ${message}${NC}"
+    else
+        echo "[$(timestamp)] ${message}"
+    fi
+    mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
+    { echo "[$(timestamp)] ${message}" >> "$LOGFILE"; } 2>/dev/null || true
 }
 
 show_usage() {
     cat << EOF
-${GREEN}╔════════════════════════════════════════════════════════╗
-║           Alert System v${SCRIPT_VERSION}                      ║
-╚════════════════════════════════════════════════════════╝${NC}
-
-${BLUE}Usage:${NC}
+Usage:
     $(basename "$0") [OPTIONS] SUBJECT [MESSAGE]
 
-${BLUE}Options:${NC}
+Options:
     -t, --type TYPE        Alert type: success|warning|error|info
     -s, --subject TEXT     Email subject (or use as first argument)
     -e, --email ADDRESS    Override email recipient
     -f, --html             Send as HTML (reads from stdin)
     -m, --message TEXT     Message body (or read from stdin)
     -h, --help             Show this help
-
-${BLUE}Examples:${NC}
-    ${GREEN}# Simple text alert${NC}
-    $(basename "$0") "Backup completed" "All backups successful"
-    
-    ${GREEN}# With type${NC}
-    $(basename "$0") -t error "Backup failed" "Server01 unreachable"
-    
-    ${GREEN}# HTML from stdin${NC}
-    cat email.html | $(basename "$0") -f "Daily Report"
-    
-    ${GREEN}# HTML from pipe${NC}
-    echo "<h1>Success</h1>" | $(basename "$0") --html "Backup OK"
-
-${BLUE}Email Methods:${NC}
-    - msmtp (preferred if configured)
-    - mail / mailx (fallback)
-    - sendmail (fallback)
-
 EOF
     exit 0
 }
 
+# Load configuration (safe defaults + backwards compatibility)
 load_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
         log "Config file not found: $CONFIG_FILE" "$YELLOW"
-        log "Using default settings" "$YELLOW"
-        
-        # Set defaults
         ENABLE_ALERTS="${ENABLE_ALERTS:-true}"
         EMAIL_TO="${EMAIL_TO:-root@localhost}"
         EMAIL_FROM="${EMAIL_FROM:-backup@$(hostname)}"
         MSMTP_ACCOUNT="${MSMTP_ACCOUNT:-default}"
         return 0
     fi
-    
+
+    # shellcheck source=/dev/null
     source "$CONFIG_FILE"
-    
-    # Validate
+
+    # Backwards compatibility
+    EMAIL_TO="$(echo "${ALERT_EMAIL:-${EMAIL_TO:-root@localhost}}" | xargs)"
+    EMAIL_FROM="$(echo "${ALERT_FROM:-${EMAIL_FROM:-backup@$(hostname)}}" | xargs)"
     ENABLE_ALERTS="${ENABLE_ALERTS:-true}"
-    EMAIL_TO="${EMAIL_TO:-root@localhost}"
-    EMAIL_FROM="${EMAIL_FROM:-backup@$(hostname)}"
     MSMTP_ACCOUNT="${MSMTP_ACCOUNT:-default}"
-    
-    log "Config loaded: Alerts=${ENABLE_ALERTS}, To=${EMAIL_TO}" "$BLUE"
+
+    log "Config loaded: Alerts=${ENABLE_ALERTS}, To=${EMAIL_TO}, From=${EMAIL_FROM}" "$BLUE"
 }
 
+# Helpers to find commands
+_msmtp() { command -v msmtp || true; }
+_mail()   { command -v mail || true; }
+_sendmail(){ command -v sendmail || true; }
+
+# Send via msmtp (writes debug to LOGFILE)
 send_email_msmtp() {
-    local subject="$1"
-    local message="$2"
-    local recipient="$3"
-    local is_html="${4:-false}"
-    
-    log "Sending via msmtp to: $recipient" "$BLUE"
-    
-    local email_content=""
-    
-    # Build email headers
-    email_content+="From: $EMAIL_FROM"$'\n'
-    email_content+="To: $recipient"$'\n'
-    email_content+="Subject: $subject"$'\n'
-    
-    if [ "$is_html" = true ]; then
-        email_content+="MIME-Version: 1.0"$'\n'
-        email_content+="Content-Type: text/html; charset=utf-8"$'\n'
+    local subject="$1"; local message="$2"; local recipient="$3"; local is_html="${4:-false}"
+    local msmtp_bin
+    msmtp_bin="$(_msmtp)"
+    if [ -z "$msmtp_bin" ]; then
+        log "msmtp not found in PATH" "$YELLOW"
+        return 2
     fi
-    
-    email_content+=""$'\n'
-    email_content+="$message"
-    
-    # Send email
-    if echo "$email_content" | msmtp -a "$MSMTP_ACCOUNT" --from="$EMAIL_FROM" "$recipient" 2>/dev/null; then
+
+    log "Sending via msmtp to: $recipient" "$BLUE"
+    local tmp
+    tmp="$(mktemp)" || return 1
+    {
+        printf 'From: %s\n' "$EMAIL_FROM"
+        printf 'To: %s\n' "$recipient"
+        printf 'Subject: %s\n' "$subject"
+        if [ "$is_html" = true ]; then
+            printf 'MIME-Version: 1.0\n'
+            printf 'Content-Type: text/html; charset=utf-8\n'
+        fi
+        printf '\n'
+        printf '%s\n' "$message"
+    } > "$tmp"
+
+    if "$msmtp_bin" -a "$MSMTP_ACCOUNT" --from="$EMAIL_FROM" "$recipient" < "$tmp" >> "$LOGFILE" 2>&1; then
         log "✓ Email sent via msmtp" "$GREEN"
+        rm -f "$tmp"
         return 0
     else
-        log "✗ msmtp failed" "$RED"
+        log "✗ msmtp failed (see $LOGFILE for details)" "$RED"
+        rm -f "$tmp"
         return 1
     fi
 }
 
+# Send via mail (mailx)
 send_email_mail() {
-    local subject="$1"
-    local message="$2"
-    local recipient="$3"
-    
-    log "Sending via mail command to: $recipient" "$BLUE"
-    
-    if echo "$message" | mail -s "$subject" "$recipient" 2>/dev/null; then
+    local subject="$1"; local message="$2"; local recipient="$3"
+    local mail_bin
+    mail_bin="$(_mail)"
+    if [ -z "$mail_bin" ]; then
+        log "mail command not found" "$YELLOW"
+        return 2
+    fi
+
+    log "Sending via mail to: $recipient" "$BLUE"
+    if printf '%s\n' "$message" | "$mail_bin" -s "$subject" "$recipient" >> "$LOGFILE" 2>&1; then
         log "✓ Email sent via mail" "$GREEN"
         return 0
     else
-        log "✗ mail command failed" "$RED"
+        log "✗ mail command failed (see $LOGFILE)" "$RED"
         return 1
     fi
 }
 
+# Send via sendmail
 send_email_sendmail() {
-    local subject="$1"
-    local message="$2"
-    local recipient="$3"
-    
+    local subject="$1"; local message="$2"; local recipient="$3"
+    local sm_bin
+    sm_bin="$(_sendmail)"
+    if [ -z "$sm_bin" ]; then
+        log "sendmail not found" "$YELLOW"
+        return 2
+    fi
+
     log "Sending via sendmail to: $recipient" "$BLUE"
-    
     if {
-        echo "To: $recipient"
-        echo "Subject: $subject"
-        echo ""
-        echo "$message"
-    } | sendmail -t 2>/dev/null; then
+        printf 'To: %s\n' "$recipient"
+        printf 'Subject: %s\n' "$subject"
+        printf '\n'
+        printf '%s\n' "$message"
+    } | "$sm_bin" -t >> "$LOGFILE" 2>&1; then
         log "✓ Email sent via sendmail" "$GREEN"
         return 0
     else
-        log "✗ sendmail failed" "$RED"
+        log "✗ sendmail failed (see $LOGFILE)" "$RED"
         return 1
     fi
 }
 
 send_alert() {
-    local subject="$1"
-    local message="$2"
-    local recipient="$3"
-    local is_html="${4:-false}"
-    
-    # Try msmtp first (if configured)
-    if command -v msmtp &> /dev/null && [ -n "${MSMTP_ACCOUNT:-}" ]; then
+    local subject="$1"; local message="$2"; local recipient="$3"; local is_html="${4:-false}"
+
+    # Try msmtp first
+    if [ -n "$(_msmtp)" ] && [ -n "${MSMTP_ACCOUNT:-}" ]; then
         if send_email_msmtp "$subject" "$message" "$recipient" "$is_html"; then
-            echo "$(date '+%F %T') - ALERT SENT (msmtp) - ${subject}" >> "$LOGFILE"
+            printf '%s - ALERT SENT (msmtp) - %s\n' "$(timestamp)" "$subject" >> "$LOGFILE" 2>/dev/null || true
             return 0
         fi
     fi
-    
+
     # Fallback to mail
-    if command -v mail &> /dev/null; then
+    if [ -n "$(_mail)" ]; then
         if send_email_mail "$subject" "$message" "$recipient"; then
-            echo "$(date '+%F %T') - ALERT SENT (mail) - ${subject}" >> "$LOGFILE"
+            printf '%s - ALERT SENT (mail) - %s\n' "$(timestamp)" "$subject" >> "$LOGFILE" 2>/dev/null || true
             return 0
         fi
     fi
-    
+
     # Fallback to sendmail
-    if command -v sendmail &> /dev/null; then
+    if [ -n "$(_sendmail)" ]; then
         if send_email_sendmail "$subject" "$message" "$recipient"; then
-            echo "$(date '+%F %T') - ALERT SENT (sendmail) - ${subject}" >> "$LOGFILE"
+            printf '%s - ALERT SENT (sendmail) - %s\n' "$(timestamp)" "$subject" >> "$LOGFILE" 2>/dev/null || true
             return 0
         fi
     fi
-    
+
     log "✗ All email methods failed" "$RED"
-    echo "$(date '+%F %T') - ALERT FAILED - ${subject}" >> "$LOGFILE"
+    printf '%s - ALERT FAILED - %s\n' "$(timestamp)" "$subject" >> "$LOGFILE" 2>/dev/null || true
     return 1
 }
 
 format_message() {
     local message="$1"
     local alert_type="$2"
-    
+
     cat << EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔔 BACKUP SYSTEM ALERT
@@ -226,84 +219,59 @@ main() {
     local email_override=""
     local is_html=false
     local read_stdin=false
-    
-    # Parse arguments
+
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -t|--type)
-                alert_type="$2"
-                shift 2
-                ;;
-            -s|--subject)
-                subject="$2"
-                shift 2
-                ;;
-            -e|--email)
-                email_override="$2"
-                shift 2
-                ;;
-            -f|--html)
-                is_html=true
-                read_stdin=true
-                shift
-                ;;
-            -m|--message)
-                message="$2"
-                shift 2
-                ;;
-            -h|--help)
-                show_usage
-                ;;
+            -t|--type) alert_type="$2"; shift 2 ;;
+            -s|--subject) subject="$2"; shift 2 ;;
+            -e|--email) email_override="$2"; shift 2 ;;
+            -f|--html) is_html=true; read_stdin=true; shift ;;
+            -m|--message) message="$2"; shift 2 ;;
+            -h|--help) show_usage ;;
             *)
-                if [ -z "$subject" ]; then
-                    subject="$1"
-                elif [ -z "$message" ]; then
-                    message="$1"
+                if [ -z "$subject" ]; then subject="$1"
+                elif [ -z "$message" ]; then message="$1"
                 fi
                 shift
                 ;;
         esac
     done
-    
-    # Read from stdin if needed
-    if [ "$read_stdin" = true ] || [ -z "$message" ]; then
-        if [ ! -t 0 ]; then
-            message=$(cat)
-        fi
+
+    if [ "$read_stdin" = true ] || { [ -z "$message" ] && [ ! -t 0 ]; }; then
+        message="$(cat -)"
     fi
-    
-    # Validate inputs
+
     if [ -z "$subject" ]; then
         log "ERROR: No subject provided" "$RED"
         show_usage
     fi
-    
-    # Load configuration
+
     load_config
-    
-    # Check if alerts are enabled
-    if [ "$ENABLE_ALERTS" != "true" ]; then
+
+    if [ "${ENABLE_ALERTS,,}" != "true" ]; then
         log "Alerts are disabled in configuration" "$YELLOW"
         exit 0
     fi
-    
-    # Format message if not HTML
+
     if [ "$is_html" = false ] && [ -n "$message" ]; then
-        message=$(format_message "$message" "$alert_type")
+        message="$(format_message "$message" "$alert_type")"
     fi
-    
-    # Add emoji to subject
+
     case "$alert_type" in
         success) subject="✅ $subject" ;;
         error)   subject="❌ $subject" ;;
         warning) subject="⚠️  $subject" ;;
         info)    subject="ℹ️  $subject" ;;
     esac
-    
-    # Determine recipient
-    local recipient="${email_override:-$EMAIL_TO}"
-    
-    # Send alert
+
+    local recipient
+    recipient="$(echo "${email_override:-$EMAIL_TO}" | xargs)"
+
+    if ! [[ "$recipient" =~ @ ]]; then
+        log "Invalid recipient '$recipient', falling back to root@localhost" "$YELLOW"
+        recipient="root@localhost"
+    fi
+
     if send_alert "$subject" "$message" "$recipient" "$is_html"; then
         log "Alert sent successfully" "$GREEN"
         exit 0
